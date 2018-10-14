@@ -1,19 +1,15 @@
-import os
 import pandas as pd
 import numpy as np
-
-from sklearn.linear_model import Ridge, LogisticRegression
-from sklearn.preprocessing import StandardScaler
-
-import lightgbm as lgb
-from sklearn import model_selection
-
 from utils import transform_datetime_features
 
 ONEHOT_MAX_UNIQUE_VALUES = 20
 BIG_DATASET_SIZE = 500 * 1024 * 1024
 
-def transform_categorical_features(df, categorical_values={}):
+
+def transform_categorical_features(df, categorical_values=None):
+    if categorical_values is None:
+        categorical_values = {}
+
     # categorical encoding
     for col_name in list(df.columns):
         if col_name not in categorical_values:
@@ -26,6 +22,7 @@ def transform_categorical_features(df, categorical_values={}):
                 df.loc[df[col_name] == unique_value, col_name] = categorical_values[col_name].get(unique_value, -1)
 
     return df, categorical_values
+
 
 def check_column_name(name):
     if name == 'line_id':
@@ -40,9 +37,9 @@ def check_column_name(name):
     return True
 
 
-def load_data(filename, datatype='train', cfg={}):
+def load_data(filename, datatype='train', cfg=None):
 
-    model_config = cfg
+    model_config = {} if cfg is None else cfg
     model_config['missing'] = True
 
     # read dataset
@@ -91,8 +88,3 @@ def load_data(filename, datatype='train', cfg={}):
         df.fillna(-1, inplace=True)
 
     return df.values.astype(np.float16) if 'is_big' in model_config else df, y, model_config, line_id
-
-
-
-
-

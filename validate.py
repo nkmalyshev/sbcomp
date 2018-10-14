@@ -6,8 +6,8 @@ import pandas as pd
 from sklearn.metrics import mean_squared_error, roc_auc_score
 
 datasets = ['check_1_r', 'check_2_r', 'check_3_r', 'check_4_c', 'check_5_c', 'check_6_c', 'check_7_c', 'check_8_c']
-result_dir = '../res'
-data_dir = '../data'
+result_dir = 'res'
+data_dir = 'data'
 
 for dataset in datasets:
 
