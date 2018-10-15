@@ -38,7 +38,6 @@ def check_column_name(name):
 
 
 def load_data(filename, datatype='train', cfg=None):
-
     model_config = {} if cfg is None else cfg
     model_config['missing'] = True
 
@@ -71,7 +70,7 @@ def load_data(filename, datatype='train', cfg=None):
             col_name
             for col_name in df.columns
             if df[col_name].nunique() == 1
-            ]
+        ]
         df.drop(constant_columns, axis=1, inplace=True)
 
     # filter columns
