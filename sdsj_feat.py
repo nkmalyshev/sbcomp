@@ -6,22 +6,23 @@ ONEHOT_MAX_UNIQUE_VALUES = 20
 BIG_DATASET_SIZE = 500 * 1024 * 1024
 
 
-def transform_categorical_features(df, categorical_values=None):
+def transform_categorical_features(df_orig, categorical_values=None):
     if categorical_values is None:
         categorical_values = {}
 
+    df = df_orig.copy(deep=True)
     # categorical encoding
     for col_name in list(df.columns):
         if col_name not in categorical_values:
             if col_name.startswith('id') or col_name.startswith('string'):
                 categorical_values[col_name] = df[col_name].value_counts().to_dict()
 
-        if col_name in categorical_values:
-            col_unique_values = df[col_name].unique()
-            for unique_value in col_unique_values:
-                df.loc[df[col_name] == unique_value, col_name] = categorical_values[col_name].get(unique_value, -1)
+        # if col_name in categorical_values:
+        #     col_unique_values = df[col_name].unique()
+        #     for unique_value in col_unique_values:
+        #         df.loc[df[col_name] == unique_value, col_name] = categorical_values[col_name].get(unique_value, -1)
 
-    return df, categorical_values
+    return categorical_values
 
 
 def check_column_name(name):
@@ -57,21 +58,21 @@ def load_data(filename, datatype='train', cfg=None):
     print('Transform datetime done, shape {}'.format(df.shape))
 
     # categorical encoding
-    if datatype == 'train':
-        df, categorical_values = transform_categorical_features(df)
-        model_config['categorical_values'] = categorical_values
-    else:
-        df, categorical_values = transform_categorical_features(df, model_config['categorical_values'])
-    print('Transform categorical done, shape {}'.format(df.shape))
+    # if datatype == 'train':
+    categorical_values = transform_categorical_features(df)
+    model_config['categorical_values'] = categorical_values
+    # else:
+    #     df, categorical_values = transform_categorical_features(df, model_config['categorical_values'])
+    # print('Transform categorical done, shape {}'.format(df.shape))
 
     # drop constant features
-    if datatype == 'train':
-        constant_columns = [
-            col_name
-            for col_name in df.columns
-            if df[col_name].nunique() == 1
-        ]
-        df.drop(constant_columns, axis=1, inplace=True)
+    # if datatype == 'train':
+    #     constant_columns = [
+    #         col_name
+    #         for col_name in df.columns
+    #         if df[col_name].nunique() == 1
+    #     ]
+    #     df.drop(constant_columns, axis=1, inplace=True)
 
     # filter columns
     if datatype == 'train':
