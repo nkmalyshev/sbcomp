@@ -3,6 +3,7 @@ import os
 import pickle
 import time
 from sdsj_feat import load_data
+from sklearn.preprocessing import LabelEncoder
 
 # use this to stop the algorithm before time limit exceeds
 TIME_LIMIT = int(os.environ.get('TIME_LIMIT', 5 * 60))
@@ -21,7 +22,7 @@ if __name__ == '__main__':
     with open(model_config_filename, 'rb') as fin:
         model_config = pickle.load(fin)
 
-    X_scaled, _, _, df = load_data(args.test_csv, datatype='test', cfg=model_config)
+    X_scaled, _, _, df = load_data(args.test_csv, mode='test')
 
     model = model_config['model']
     # df = pd.read_csv(args.test_csv, usecols=['line_id',])

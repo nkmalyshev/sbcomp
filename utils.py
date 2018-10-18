@@ -19,3 +19,4 @@ def transform_datetime_features(df):
         df['number_day_{}'.format(col_name)] = df[col_name].dt.day
         df['number_hour_{}'.format(col_name)] = df[col_name].dt.hour
     return df
+

@@ -38,19 +38,22 @@ def check_column_name(name):
     return True
 
 
-def load_data(filename, datatype='train', cfg=None):
-    model_config = {} if cfg is None else cfg
-    model_config['missing'] = True
+def load_data(filename, mode='train'):
+    # model_config = dict()
+    # model_config['missing'] = True
 
     # read dataset
     df = pd.read_csv(filename, low_memory=False)
-    if datatype == 'train':
+    if mode == 'train':
         y = df.target
         df = df.drop('target', axis=1)
         if df.memory_usage().sum() > BIG_DATASET_SIZE:
-            model_config['is_big'] = True
+            is_big = True
+        else:
+            is_big = False
     else:
         y = None
+        is_big = False
     print('Dataset read, shape {}'.format(df.shape))
 
     # features from datetime
@@ -60,7 +63,7 @@ def load_data(filename, datatype='train', cfg=None):
     # categorical encoding
     # if datatype == 'train':
     categorical_values = transform_categorical_features(df)
-    model_config['categorical_values'] = categorical_values
+    # model_config['categorical_values'] = categorical_values
     # else:
     #     df, categorical_values = transform_categorical_features(df, model_config['categorical_values'])
     # print('Transform categorical done, shape {}'.format(df.shape))
@@ -75,16 +78,24 @@ def load_data(filename, datatype='train', cfg=None):
     #     df.drop(constant_columns, axis=1, inplace=True)
 
     # filter columns
-    if datatype == 'train':
-        model_config['used_columns'] = [c for c in df.columns if check_column_name(c) or c in categorical_values]
-    used_columns = model_config['used_columns']
+    # if mode == 'train':
+    used_columns = [c for c in df.columns if check_column_name(c) or c in categorical_values]
+    # used_columns = model_config['used_columns']
     print('Used {} columns'.format(len(used_columns)))
 
     line_id = df[['line_id', ]]
     df = df[used_columns]
 
-    # missing values
-    if model_config['missing']:
-        df.fillna(-1, inplace=True)
+    # # missing values
+    # if model_config['missing']:
+    #     df.fillna(-1, inplace=True)
 
-    return df.values.astype(np.float16) if 'is_big' in model_config else df, y, model_config, line_id
+    if is_big:
+        df.values = df.values.astype(np.float16)
+
+    model_config = dict(
+        used_columns=used_columns,
+        categorical_values=categorical_values,
+        is_big=is_big
+    )
+    return df, y, model_config, line_id

@@ -4,6 +4,7 @@ import pickle
 import time
 import lightgbm as lgb
 from sdsj_feat import load_data
+from sklearn.preprocessing import LabelEncoder
 
 # use this to stop the algorithm before time limit exceeds
 TIME_LIMIT = int(os.environ.get('TIME_LIMIT', 5 * 60))
@@ -44,8 +45,14 @@ if __name__ == '__main__':
     }
 
     model = lgb.train(params, lgb.Dataset(df_X, label=df_y), 600)
+    label_enc = LabelEncoder()
+    cat_features = model_config['categorical_values']
+    print('cat features=', cat_features)
+    label_enc.fit(df_X[cat_features])
+    df_X = label_enc.transform(df_X[cat_features])
 
     model_config['model'] = model
+    model_config['label_enc'] = label_enc
     model_config['params'] = params
 
     model_config_filename = os.path.join(args.model_dir, 'model_config.pkl')
