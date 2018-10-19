@@ -38,22 +38,22 @@ def check_column_name(name):
     return True
 
 
-def load_data(filename, mode='train'):
+def load_data(path, mode='train'):
     # model_config = dict()
     # model_config['missing'] = True
 
     # read dataset
-    df = pd.read_csv(filename, low_memory=False)
+    is_big = False
     if mode == 'train':
+        df = pd.read_csv(f'{path}/train.csv', low_memory=False)
         y = df.target
         df = df.drop('target', axis=1)
         if df.memory_usage().sum() > BIG_DATASET_SIZE:
             is_big = True
-        else:
-            is_big = False
     else:
-        y = None
-        is_big = False
+        df = pd.read_csv(f'{path}/test.csv', low_memory=False)
+        y = pd.read_csv(f'{path}/test-target.csv', low_memory=False).target
+
     print('Dataset read, shape {}'.format(df.shape))
 
     # features from datetime
