@@ -7,7 +7,7 @@ _DATA_PATH = 'data/check_2_r'
 _PATH_TO_TRAIN = 'data/check_2_r'
 _PATH_TO_TEST = 'data/check_2_r'
 
-params = {
+default_params = {
         'task': 'train',
         'boosting_type': 'gbdt',
         'objective': 'regression', #if args.mode == 'regression' else 'binary',
@@ -35,13 +35,17 @@ def main():
     cat_features = train_params['categorical_values']
     cat_cols = list(cat_features.keys())
     print('cat features=', cat_cols)
+
     label_enc = MultiColumnLabelEncoder(cat_cols)
     label_enc.fit(x_train[cat_cols])
 
-    x_train_enc = label_enc.transform(x_train[cat_cols])
+    x_train_enc = label_enc.transform(x_train)
     x_test_enc = label_enc.transform(x_test)
 
-    model = lgb.train(params, lgb.Dataset(x_train_enc, label=y_train), 600)
+    model = lgb.train(
+        default_params,
+        lgb.Dataset(x_train_enc, label=y_train, categorical_feature=cat_cols),
+        600)
 
     y_train_out = model.predict(x_train_enc)
     y_test_out = model.predict(x_test_enc)
