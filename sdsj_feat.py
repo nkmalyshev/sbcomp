@@ -38,6 +38,11 @@ def check_column_name(name):
     return True
 
 
+def load_test_label(path):
+    y = pd.read_csv(path, low_memory=False).target
+    return y
+
+
 def load_data(path, mode='train'):
     # model_config = dict()
     # model_config['missing'] = True
@@ -45,14 +50,14 @@ def load_data(path, mode='train'):
     # read dataset
     is_big = False
     if mode == 'train':
-        df = pd.read_csv(f'{path}/train.csv', low_memory=False)
+        df = pd.read_csv(path, low_memory=False)
         y = df.target
         df = df.drop('target', axis=1)
         if df.memory_usage().sum() > BIG_DATASET_SIZE:
             is_big = True
     else:
-        df = pd.read_csv(f'{path}/test.csv', low_memory=False)
-        y = pd.read_csv(f'{path}/test-target.csv', low_memory=False).target
+        df = pd.read_csv(path, low_memory=False)
+        y = None
 
     print('Dataset read, shape {}'.format(df.shape))
 
@@ -61,41 +66,25 @@ def load_data(path, mode='train'):
     print('Transform datetime done, shape {}'.format(df.shape))
 
     # categorical encoding
-    # if datatype == 'train':
-    categorical_values = transform_categorical_features(df)
-    # model_config['categorical_values'] = categorical_values
-    # else:
-    #     df, categorical_values = transform_categorical_features(df, model_config['categorical_values'])
-    # print('Transform categorical done, shape {}'.format(df.shape))
-
-    # drop constant features
-    # if datatype == 'train':
-    #     constant_columns = [
-    #         col_name
-    #         for col_name in df.columns
-    #         if df[col_name].nunique() == 1
-    #     ]
-    #     df.drop(constant_columns, axis=1, inplace=True)
+    categorical_columns = transform_categorical_features(df)
+    cat_cols = list(categorical_columns.keys())
+    for col in cat_cols:
+        df[col] = df[col].astype('category')
 
     # filter columns
-    # if mode == 'train':
-    used_columns = [c for c in df.columns if check_column_name(c) or c in categorical_values]
-    # used_columns = model_config['used_columns']
+    used_columns = [c for c in df.columns if check_column_name(c) or c in categorical_columns]
     print('Used {} columns'.format(len(used_columns)))
 
     line_id = df[['line_id', ]]
     df = df[used_columns]
-
-    # # missing values
-    # if model_config['missing']:
-    #     df.fillna(-1, inplace=True)
+    numeric_cols = df.select_dtypes(include=np.number).columns.values
 
     if is_big:
-        df.values = df.values.astype(np.float16)
+        df[numeric_cols] = df[numeric_cols].astype(np.float16)
 
     model_config = dict(
         used_columns=used_columns,
-        categorical_values=categorical_values,
+        categorical_values=categorical_columns,
         is_big=is_big
     )
     return df, y, model_config, line_id
