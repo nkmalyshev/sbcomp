@@ -6,16 +6,19 @@ ONEHOT_MAX_UNIQUE_VALUES = 20
 BIG_DATASET_SIZE = 500 * 1024 * 1024
 
 
-def transform_categorical_features(df_orig, categorical_values=None):
-    if categorical_values is None:
-        categorical_values = {}
+def get_mem(df):
+    mem = df.memory_usage().sum() / 1000000
+    return f'{mem:.2f}Mb'
 
-    df = df_orig.copy(deep=True)
+
+def transform_categorical_features(df):
+    categorical_values = {}
+
     # categorical encoding
     for col_name in list(df.columns):
-        if col_name not in categorical_values:
-            if col_name.startswith('id') or col_name.startswith('string'):
-                categorical_values[col_name] = df[col_name].value_counts().to_dict()
+        if col_name.startswith('id') or col_name.startswith('string'):
+            # categorical_values[col_name] = df[col_name].value_counts().to_dict()
+            categorical_values[col_name] = True
 
         # if col_name in categorical_values:
         #     col_unique_values = df[col_name].unique()
@@ -43,10 +46,7 @@ def load_test_label(path):
     return y
 
 
-def load_data(path, mode='train'):
-    # model_config = dict()
-    # model_config['missing'] = True
-
+def load_data(path, mode='train', model_config={}):
     # read dataset
     is_big = False
     if mode == 'train':
@@ -59,11 +59,20 @@ def load_data(path, mode='train'):
         df = pd.read_csv(path, low_memory=False)
         y = None
 
-    print('Dataset read, shape {}'.format(df.shape))
+    print(f'Dataset read, shape: {df.shape}, memory: {get_mem(df)}')
 
     # features from datetime
-    df = transform_datetime_features(df)
-    print('Transform datetime done, shape {}'.format(df.shape))
+    df, date_cols = transform_datetime_features(df)
+
+    # # old cat encoding
+    # if mode == 'train':
+    #     df, categorical_columns = old_transform_categorical_features(df)
+    #     model_config['categorical_values'] = categorical_columns
+    # else:
+    #     df, categorical_columns = old_transform_categorical_features(df, model_config['categorical_values'])
+    # cat_cols = list(categorical_columns.keys())
+    # # fill nan so column becomes numeric
+    # df[cat_cols] = df[cat_cols].fillna(-1)
 
     # categorical encoding
     categorical_columns = transform_categorical_features(df)
@@ -73,11 +82,13 @@ def load_data(path, mode='train'):
 
     # filter columns
     used_columns = [c for c in df.columns if check_column_name(c) or c in categorical_columns]
-    print('Used {} columns'.format(len(used_columns)))
 
     line_id = df[['line_id', ]]
     df = df[used_columns]
-    numeric_cols = df.select_dtypes(include=np.number).columns.values
+    numeric_cols = df.select_dtypes(include=np.float).columns.values
+
+    print(f'Cat: {len(cat_cols)}, numeric: {len(numeric_cols)}, date: {len(date_cols)}')
+    print(f'Used: {len(used_columns)}, memory: {get_mem(df)}')
 
     if is_big:
         df[numeric_cols] = df[numeric_cols].astype(np.float16)
@@ -85,6 +96,22 @@ def load_data(path, mode='train'):
     model_config = dict(
         used_columns=used_columns,
         categorical_values=categorical_columns,
+        numeric_cols=numeric_cols,
         is_big=is_big
     )
     return df, y, model_config, line_id
+
+
+def old_transform_categorical_features(df, categorical_values={}):
+    # categorical encoding
+    for col_name in list(df.columns):
+        if col_name not in categorical_values:
+            if col_name.startswith('id') or col_name.startswith('string'):
+                categorical_values[col_name] = df[col_name].value_counts().to_dict()
+
+        if col_name in categorical_values:
+            col_unique_values = df[col_name].unique()
+            for unique_value in col_unique_values:
+                df.loc[df[col_name] == unique_value, col_name] = categorical_values[col_name].get(unique_value, -1)
+
+    return df, categorical_values

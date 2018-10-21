@@ -1,15 +1,19 @@
 import lightgbm as lgb
 from sdsj_feat import load_data, load_test_label
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, roc_auc_score
 
-_DATA_PATH = 'data/check_2_r'
-_PATH_TO_TRAIN = 'data/check_2_r'
-_PATH_TO_TEST = 'data/check_2_r'
+_DATA_PATH = 'data/'
+
+data_sets = [
+    # 'check_4_c', 'check_5_c', 'check_6_c',
+    'check_7_c',
+    'check_8_c'
+]
 
 default_params = {
         'task': 'train',
         'boosting_type': 'gbdt',
-        'objective': 'regression', #if args.mode == 'regression' else 'binary',
+        'objective': 'binary', #if args.mode == 'regression' else 'binary',
         'metric': 'rmse',
         "learning_rate": 0.01,
         "num_leaves": 200,
@@ -22,15 +26,16 @@ default_params = {
         "reg_lambda": 0.1,
         "min_child_weight": 10,
         'zero_as_missing': True,
-        'num_threads': 4,
+        'num_threads': 8,
         'seed': 1
     }
 
 
-def main():
-    x_train, y_train, train_params, _ = load_data(f'{_PATH_TO_TRAIN}/train.csv', mode='train')
-    x_test, _, test_params, _ = load_data(f'{_PATH_TO_TEST}/test.csv', mode='test')
-    y_test = load_test_label(f'{_PATH_TO_TEST}/test-target.csv')
+def run_train_test(ds_name, metric):
+    path = _DATA_PATH + ds_name
+    x_train, y_train, train_params, _ = load_data(f'{path}/train.csv', mode='train')
+    x_test, _, test_params, _ = load_data(f'{path}/test.csv', mode='test')
+    y_test = load_test_label(f'{path}/test-target.csv')
 
     model = lgb.train(
         default_params,
@@ -40,11 +45,17 @@ def main():
     y_train_out = model.predict(x_train)
     y_test_out = model.predict(x_test)
 
-    train_err = mean_squared_error(y_train, y_train_out)
-    test_err = mean_squared_error(y_test, y_test_out)
+    train_err = metric(y_train, y_train_out)
+    test_err = metric(y_test, y_test_out)
 
-    print('train=', x_train.shape, 'y train=', y_train.shape, 'err=', train_err)
-    print('test=', x_test.shape, 'y test=', y_test.shape, 'err=', test_err)
+    return train_err, test_err
+
+
+def main():
+    for data_path in data_sets:
+        train_err, test_err = run_train_test(data_path, roc_auc_score)
+
+        print(f'ds={data_path} train_err={train_err:.4f} test_err={test_err:.4f}')
 
 
 if __name__ == '__main__':

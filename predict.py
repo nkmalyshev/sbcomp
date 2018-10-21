@@ -22,7 +22,7 @@ if __name__ == '__main__':
     with open(model_config_filename, 'rb') as fin:
         model_config = pickle.load(fin)
 
-    X_scaled, _, _, df = load_data(args.test_csv, mode='test')
+    X_scaled, _, _, df = load_data(args.test_csv, mode='test', model_config=model_config)
 
     model = model_config['model']
     # df = pd.read_csv(args.test_csv, usecols=['line_id',])
