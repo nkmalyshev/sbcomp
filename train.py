@@ -53,4 +53,4 @@ if __name__ == '__main__':
     with open(model_config_filename, 'wb') as fout:
         pickle.dump(model_config, fout, protocol=pickle.HIGHEST_PROTOCOL)
 
-    print('Train time: {}'.format(time.time() - start_time))
+    print('Train time: {:0.2f}'.format(time.time() - start_time))

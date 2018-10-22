@@ -16,11 +16,11 @@ def transform_datetime_features(df):
     for col_name in datetime_columns:
         df[col_name] = pd.to_datetime(df[col_name])
 
-        year = f'number_year_{col_name}'
-        month = f'number_month_{col_name}'
-        weekday = f'number_weekday_{col_name}'
-        day = f'number_day_{col_name}'
-        hour = f'number_hour_{col_name}'
+        year = f'date_year_{col_name}'
+        month = f'date_month_{col_name}'
+        weekday = f'date_weekday_{col_name}'
+        day = f'date_day_{col_name}'
+        hour = f'date_hour_{col_name}'
 
         df[year] = df[col_name].dt.year
         df[month] = df[col_name].dt.month
@@ -37,5 +37,5 @@ def transform_datetime_features(df):
             df[col] = df[col].astype(np.int16)
         else:
             df[col] = df[col].astype(np.int8)
-    return df, datetime_columns
+    return df, res_date_cols, datetime_columns
 

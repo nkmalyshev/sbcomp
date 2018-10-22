@@ -17,13 +17,7 @@ def transform_categorical_features(df):
     # categorical encoding
     for col_name in list(df.columns):
         if col_name.startswith('id') or col_name.startswith('string'):
-            # categorical_values[col_name] = df[col_name].value_counts().to_dict()
             categorical_values[col_name] = True
-
-        # if col_name in categorical_values:
-        #     col_unique_values = df[col_name].unique()
-        #     for unique_value in col_unique_values:
-        #         df.loc[df[col_name] == unique_value, col_name] = categorical_values[col_name].get(unique_value, -1)
 
     return categorical_values
 
@@ -46,33 +40,25 @@ def load_test_label(path):
     return y
 
 
-def load_data(path, mode='train', model_config={}):
+def load_data(path, mode='train'):
     # read dataset
     is_big = False
     if mode == 'train':
         df = pd.read_csv(path, low_memory=False)
+        df.set_index('line_id', inplace=True)
         y = df.target
         df = df.drop('target', axis=1)
         if df.memory_usage().sum() > BIG_DATASET_SIZE:
             is_big = True
     else:
         df = pd.read_csv(path, low_memory=False)
+        df.set_index('line_id', inplace=True)
         y = None
 
     print(f'Dataset read, shape: {df.shape}, memory: {get_mem(df)}')
 
     # features from datetime
-    df, date_cols = transform_datetime_features(df)
-
-    # # old cat encoding
-    # if mode == 'train':
-    #     df, categorical_columns = old_transform_categorical_features(df)
-    #     model_config['categorical_values'] = categorical_columns
-    # else:
-    #     df, categorical_columns = old_transform_categorical_features(df, model_config['categorical_values'])
-    # cat_cols = list(categorical_columns.keys())
-    # # fill nan so column becomes numeric
-    # df[cat_cols] = df[cat_cols].fillna(-1)
+    df, date_cols, orig_date_cols = transform_datetime_features(df)
 
     # categorical encoding
     categorical_columns = transform_categorical_features(df)
@@ -81,17 +67,17 @@ def load_data(path, mode='train', model_config={}):
         df[col] = df[col].astype('category')
 
     # filter columns
-    used_columns = [c for c in df.columns if check_column_name(c) or c in categorical_columns]
+    used_columns = [c for c in df.columns if check_column_name(c) or c in categorical_columns or c in set(date_cols)]
 
-    line_id = df[['line_id', ]]
+    line_id = pd.DataFrame(df.index)
     df = df[used_columns]
-    numeric_cols = df.select_dtypes(include=np.float).columns.values
-
-    print(f'Cat: {len(cat_cols)}, numeric: {len(numeric_cols)}, date: {len(date_cols)}')
-    print(f'Used: {len(used_columns)}, memory: {get_mem(df)}')
+    numeric_cols = [c for c in df.columns if c.startswith('number')]
 
     if is_big:
         df[numeric_cols] = df[numeric_cols].astype(np.float16)
+
+    print(f'Cat: {len(cat_cols)}, num: {len(numeric_cols)}, date: {len(date_cols)}, orig_dt: {len(orig_date_cols)}')
+    print(f'Used: {len(used_columns)}, memory: {get_mem(df)}')
 
     model_config = dict(
         used_columns=used_columns,
