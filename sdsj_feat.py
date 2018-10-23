@@ -40,11 +40,14 @@ def load_test_label(path):
     return y
 
 
-def load_data(path, mode='train'):
+def load_data(path, mode='train', sample=None):
     # read dataset
     is_big = False
     if mode == 'train':
         df = pd.read_csv(path, low_memory=False)
+        shape_orig = df.shape
+        if sample is not None:
+            df = df.sample(n=sample)
         df.set_index('line_id', inplace=True)
         y = df.target
         df = df.drop('target', axis=1)
@@ -55,7 +58,7 @@ def load_data(path, mode='train'):
         df.set_index('line_id', inplace=True)
         y = None
 
-    print(f'Dataset read, shape: {df.shape}, memory: {get_mem(df)}')
+    print(f'Dataset read, orig: {shape_orig}, sampled: {df.shape}, memory: {get_mem(df)}, mode: {mode}')
 
     # features from datetime
     df, date_cols, orig_date_cols = transform_datetime_features(df)
