@@ -6,15 +6,15 @@ from sklearn.metrics import mean_squared_error, roc_auc_score
 _DATA_PATH = 'data/'
 
 data_sets = [
-    'check_4_c', 'check_5_c', 'check_6_c',
-    'check_7_c',
+    # 'check_4_c', 'check_5_c', 'check_6_c',
+    # 'check_7_c',
     'check_8_c'
 ]
 
 
 def run_train_test(ds_name, metric, params, sample_train):
     path = _DATA_PATH + ds_name
-    x_train, y_train, train_params, _ = load_data(f'{path}/train.csv', mode='train', sample=sample_train)
+    x_train, y_train, train_params, _ = load_data(f'{path}/train.csv', mode='train')
     x_test, _, test_params, _ = load_data(f'{path}/test.csv', mode='test')
     y_test = load_test_label(f'{path}/test-target.csv')
 
