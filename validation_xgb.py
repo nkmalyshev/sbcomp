@@ -17,8 +17,7 @@ data_sets = [
 ]
 
 
-
-def run_train_test(ds_name, metric, params):
+def run_train_test(ds_name, metric, xgb_params, lgb_params):
     path = _DATA_PATH + ds_name
 
     x_train, y_train, line_id, is_test, is_big = load_data(f'{path}/train.csv', mode='train')
@@ -32,7 +31,7 @@ def run_train_test(ds_name, metric, params):
     dtrain = xgb.DMatrix(x_train, label=y_train)
     # dtest = xgb.DMatrix(x_test)
 
-    xgb_model = xgb.train(params['params'], dtrain, params['num_rounds'])
+    xgb_model = xgb.train(xgb_params['params'], dtrain, xgb_params['num_rounds'])
     y_train_out = xgb_model.predict(dtrain)
     # y_test_out = xgb_model.predict(dtest)
 
@@ -43,6 +42,7 @@ def run_train_test(ds_name, metric, params):
     return train_err, test_err
 
 def main():
+    start_time0 = time.time()
     for data_path in data_sets:
         mode = data_path[-1]
 
@@ -58,13 +58,33 @@ def main():
             'num_rounds': 200
         }
 
+        lgb_params = {
+            'task': 'train',
+            'boosting_type': 'gbdt',
+            'objective': 'regression' if mode == 'r' else 'binary',
+            'metric': 'rmse',
+            "learning_rate": 0.01,
+            "num_leaves": 200,
+            "feature_fraction": 0.70,
+            "bagging_fraction": 0.70,
+            'bagging_freq': 4,
+            "max_depth": -1,
+            "verbosity": -1,
+            "reg_alpha": 0.3,
+            "reg_lambda": 0.1,
+            "min_child_weight": 10,
+            'zero_as_missing': True,
+            'num_threads': 4,
+            'seed': 1
+        }
+
         start_time = time.time()
         metric = mean_squared_error if mode == 'r' else roc_auc_score
-        train_err, test_err = run_train_test(data_path, metric, xgb_params)
+        train_err, test_err = run_train_test(data_path, metric, xgb_params, lgb_params)
         print('train time: {:0.2f}'.format(time.time() - start_time))
 
         print(f'ds={data_path} eval_metric={metric.__name__} train_err={train_err:.4f} test_err={test_err:.4f}')
-
+    print('train time: {:0.2f}'.format(time.time() - start_time0))
 
 if __name__ == '__main__':
     main()
