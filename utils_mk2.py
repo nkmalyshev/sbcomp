@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+import xgboost as xgb
+from sdsj_feat import cat_frequencies
 
 ONEHOT_MAX_UNIQUE_VALUES = 20
 BIG_DATASET_SIZE = 500 * 1024 * 1024
@@ -76,8 +78,6 @@ def old_transform_categorical_features(df, categorical_values={}):
 def check_column_name(name):
     if name == 'line_id':
         return False
-    if name == 'is_test':
-        return False
     if name.startswith('datetime'):
         return False
     if name.startswith('string'):
@@ -117,24 +117,37 @@ def load_data(path, mode='train'):
 
 def simple_feature_selector(cols, X, Y, min_columns=3, max_columns=50, max_rel_error=.9):
     df_out = pd.DataFrame(
-        {'col_names': cols, 'ols_error': -1})
+        {'col_names': cols, 'ols_error': -1, 'xgb_error': -1})
     df_out.set_index('col_names', inplace=True)
 
     for col in df_out.index.values:
         Xi = pd.DataFrame({'feature': X[col]})
-        p = ols(Xi, Y, .3)
-        error = np.sqrt(np.dot(p - Y, p - Y) / Y.shape[0])
-        df_out.loc[col] = error
 
-    df_out['related_error'] = df_out.ols_error / max(df_out.ols_error)
-    df_out = df_out.sort_values('related_error')
-    df_out['rank'] = df_out.sort_values('related_error').reset_index().index
+        p_ols = calc_ols(Xi, Y, .3)
+        ols_error = np.sqrt(np.dot(p_ols - Y, p_ols - Y) / Y.shape[0])
 
-    df_out['usefull'] = (df_out['rank'] < min_columns) | (df_out['related_error'] < max_rel_error) | (df_out['rank'] < max_columns)
+        p_xgb = calc_xgb(Xi, Y)
+        xgb_error = np.sqrt(np.dot(p_xgb - Y, p_xgb - Y) / Y.shape[0])
+
+        df_out.loc[col,'ols_error'] = ols_error
+        df_out.loc[col,'xgb_error'] = xgb_error
+
+    df_out['ols_related_error'] = df_out.ols_error / max(df_out.ols_error)
+    df_out = df_out.sort_values('ols_related_error')
+    df_out['ols_rank'] = df_out.sort_values('ols_related_error').reset_index().index
+
+    df_out['xgb_related_error'] = df_out.xgb_error / max(df_out.xgb_error)
+    df_out = df_out.sort_values('xgb_related_error')
+    df_out['xgb_rank'] = df_out.sort_values('xgb_related_error').reset_index().index
+
+    df_out['ols_usefull'] = (df_out['ols_rank'] < min_columns) | (df_out['ols_related_error'] < max_rel_error) | (df_out['ols_rank'] < max_columns)
+    df_out['xgb_usefull'] = (df_out['xgb_rank'] < min_columns) | (df_out['xgb_related_error'] < max_rel_error) | (df_out['xgb_rank'] < max_columns)
+
+    df_out['usefull'] = (df_out['ols_rank'] < max_columns) | (df_out['xgb_rank'] < max_columns)
 
     return df_out
 
-def ols(X, Y, reg_l2):
+def calc_ols(X, Y, reg_l2):
     power = 2
     for feature in X.columns.values:
         X = X.fillna(X[feature].mean())
@@ -145,6 +158,27 @@ def ols(X, Y, reg_l2):
     ols_w = np.dot(np.linalg.inv(np.dot(X.T, X) + reg_l2 * np.eye(power + 1, dtype=int)), np.dot(X.T, Y))
     p = np.dot(X, ols_w)
     return p
+
+
+def calc_xgb(X,Y):
+
+    params = {
+        'params': {
+            'silent': 1,
+            'objective': 'reg:linear',
+            'max_depth': 10,
+            'min_child_weight': 1,
+            'eta': .1},
+        'num_rounds': 5
+    }
+
+    dtrain = xgb.DMatrix(X, label=Y)
+    xgb_model = xgb.train(params['params'], dtrain, params['num_rounds'])
+    p = xgb_model.predict(dtrain)
+
+    return p
+
+
 
 def collect_col_stats(df):
     col_stats = df.describe(include='all').T
@@ -174,6 +208,6 @@ def preprocessing(X, Y, mode='train'):
     col_stats = collect_col_stats(X_out)
 
     cols = col_stats.index.values[col_stats.is_numeric & (col_stats['nunique'] > 1)]
-    fs_results = simple_feature_selector(cols, X_out, Y, min_columns=3, max_columns=75, max_rel_error=.9)
+    fs_results = simple_feature_selector(cols, X_out, Y, min_columns=3, max_columns=50, max_rel_error=.9)
 
     return X_out[fs_results.index.values[fs_results.usefull]]
