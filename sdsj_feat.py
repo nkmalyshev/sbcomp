@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from utils import transform_datetime_features
+from profiler import Profiler
 
 ONEHOT_MAX_UNIQUE_VALUES = 20
 BIG_DATASET_SIZE = 500 * 1024 * 1024
@@ -43,28 +44,42 @@ def load_test_label(path):
 def load_data(path, mode='train'):
     # read dataset
     is_big = False
-    if mode == 'train':
-        df = pd.read_csv(path, low_memory=False)
-        df.set_index('line_id', inplace=True)
-        y = df.target
-        df = df.drop('target', axis=1)
-        if df.memory_usage().sum() > BIG_DATASET_SIZE:
-            is_big = True
-    else:
-        df = pd.read_csv(path, low_memory=False)
-        df.set_index('line_id', inplace=True)
-        y = None
+    with Profiler('load data set'):
+        if mode == 'train':
+            df = pd.read_csv(path, low_memory=False)
+            df.set_index('line_id', inplace=True)
+            y = df.target
+            df = df.drop('target', axis=1)
+            if df.memory_usage().sum() > BIG_DATASET_SIZE:
+                is_big = True
+        else:
+            df = pd.read_csv(path, low_memory=False)
+            df.set_index('line_id', inplace=True)
+            y = None
 
     print(f'Dataset read, shape: {df.shape}, memory: {get_mem(df)}')
 
     # features from datetime
-    df, date_cols, orig_date_cols = transform_datetime_features(df)
+    with Profiler('datetime feature eng'):
+        df, date_cols, orig_date_cols = transform_datetime_features(df)
 
     # categorical encoding
-    categorical_columns = transform_categorical_features(df)
-    cat_cols = list(categorical_columns.keys())
-    for col in cat_cols:
-        df[col] = df[col].astype('category')
+    with Profiler('categorical features'):
+        categorical_columns = transform_categorical_features(df)
+        cat_cols = list(categorical_columns.keys())
+        for col in cat_cols:
+            df[col] = df[col].astype('category')
+
+    # drop duplicate cols
+    with Profiler('drop duplicate cols'):
+        if mode == 'train':
+            constant_columns = [
+                col_name
+                for col_name in df.columns
+                if df[col_name].nunique() == 1
+            ]
+            print(f' - dropping {len(constant_columns)} columns')
+            df.drop(constant_columns, axis=1, inplace=True)
 
     # filter columns
     used_columns = [c for c in df.columns if check_column_name(c) or c in categorical_columns or c in set(date_cols)]
@@ -76,8 +91,8 @@ def load_data(path, mode='train'):
     if is_big:
         df[numeric_cols] = df[numeric_cols].astype(np.float16)
 
-    print(f'Cat: {len(cat_cols)}, num: {len(numeric_cols)}, date: {len(date_cols)}, orig_dt: {len(orig_date_cols)}')
-    print(f'Used: {len(used_columns)}, memory: {get_mem(df)}')
+    print(f' - Cat: {len(cat_cols)}, num: {len(numeric_cols)}, date: {len(date_cols)}, orig_dt: {len(orig_date_cols)}')
+    print(f' - Used: {len(used_columns)}, memory: {get_mem(df)}')
 
     model_config = dict(
         used_columns=used_columns,
