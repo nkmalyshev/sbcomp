@@ -41,34 +41,38 @@ def load_test_label(path):
     return y
 
 
-def load_data(path, mode='train'):
+def load_data(path, mode='train', sample=None):
     # read dataset
     is_big = False
-    with Profiler('load data set'):
-        if mode == 'train':
-            df = pd.read_csv(path, low_memory=False)
-            df.set_index('line_id', inplace=True)
-            y = df.target
-            df = df.drop('target', axis=1)
-            if df.memory_usage().sum() > BIG_DATASET_SIZE:
-                is_big = True
-        else:
-            df = pd.read_csv(path, low_memory=False)
-            df.set_index('line_id', inplace=True)
-            y = None
+    if mode == 'train':
+        df = pd.read_csv(path, low_memory=False)
+        shape_orig = df.shape
+        if sample is not None:
+            df = df.sample(n=sample)
+        df.set_index('line_id', inplace=True)
+        y = df.target
+        df = df.drop('target', axis=1)
+        if df.memory_usage().sum() > BIG_DATASET_SIZE:
+            is_big = True
+    else:
+        df = pd.read_csv(path, low_memory=False)
+        df.set_index('line_id', inplace=True)
+        y = None
 
-    print(f'Dataset read, shape: {df.shape}, memory: {get_mem(df)}')
+    print(f'Dataset read, orig: {shape_orig}, sampled: {df.shape}, memory: {get_mem(df)}, mode: {mode}')
 
     # features from datetime
-    with Profiler('datetime feature eng'):
-        df, date_cols, orig_date_cols = transform_datetime_features(df)
+    df, date_cols, orig_date_cols = transform_datetime_features(df)
+
+    new_cat = cat_frequencies(df)
+    df, old_cat = old_transform_categorical_features(df, {})
+
 
     # categorical encoding
-    with Profiler('categorical features'):
-        categorical_columns = transform_categorical_features(df)
-        cat_cols = list(categorical_columns.keys())
-        for col in cat_cols:
-            df[col] = df[col].astype('category')
+    categorical_columns = transform_categorical_features(df)
+    cat_cols = list(categorical_columns.keys())
+    for col in cat_cols:
+        df[col] = df[col].astype('category')
 
     # drop duplicate cols
     with Profiler('drop duplicate cols'):
@@ -110,9 +114,33 @@ def old_transform_categorical_features(df, categorical_values={}):
             if col_name.startswith('id') or col_name.startswith('string'):
                 categorical_values[col_name] = df[col_name].value_counts().to_dict()
 
-        if col_name in categorical_values:
-            col_unique_values = df[col_name].unique()
-            for unique_value in col_unique_values:
-                df.loc[df[col_name] == unique_value, col_name] = categorical_values[col_name].get(unique_value, -1)
+        # if col_name in categorical_values:
+        #     col_unique_values = df[col_name].unique()
+        #     for unique_value in col_unique_values:
+        #         df.loc[df[col_name] == unique_value, col_name] = categorical_values[col_name].get(unique_value, -1)
 
     return df, categorical_values
+
+
+def cat_frequencies(df, freq=None):
+    if freq is None:
+        freq = {}
+
+    cat_cols = [col for col in df.columns.values if col.startswith('id') or col.startswith('string')]
+
+    upd_freq = {}
+    for col in cat_cols:
+        upd_freq[col] = df[col].groupby(df[col]).size()
+
+    # categorical encoding
+    # for col_name in list(df.columns):
+    #     if col_name not in categorical_values:
+    #         if col_name.startswith('id') or col_name.startswith('string'):
+    #             categorical_values[col_name] = df[col_name].value_counts().to_dict()
+    #
+    #     if col_name in categorical_values:
+    #         col_unique_values = df[col_name].unique()
+    #         for unique_value in col_unique_values:
+    #             df.loc[df[col_name] == unique_value, col_name] = categorical_values[col_name].get(unique_value, -1)
+
+    return upd_freq

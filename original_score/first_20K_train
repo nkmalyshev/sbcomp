@@ -1,0 +1,98 @@
+### Check dataset check_1_r
+Dataset read, shape (365, 41)
+Transform datetime done, shape (365, 46)
+Transform categorical done, shape (365, 46)
+Used 43 columns
+Train time: 0.3870871067047119
+Dataset read, shape (172, 41)
+Transform datetime done, shape (172, 46)
+Transform categorical done, shape (172, 46)
+Used 43 columns
+Prediction time: 0.14803338050842285
+Score 10.5086
+### Check dataset check_2_r
+Dataset read, shape (13958, 10)
+Transform datetime done, shape (13958, 10)
+Transform categorical done, shape (13958, 10)
+Used 8 columns
+Train time: 3.816869020462036
+Dataset read, shape (5976, 10)
+Transform datetime done, shape (5976, 10)
+Transform categorical done, shape (5976, 10)
+Used 8 columns
+Prediction time: 0.34407877922058105
+Score 1.2621
+### Check dataset check_3_r
+Dataset read, shape (20000, 42)
+Transform datetime done, shape (20000, 47)
+Transform categorical done, shape (20000, 47)
+Used 28 columns
+Train time: 7.0326056480407715
+Dataset read, shape (146400, 42)
+Transform datetime done, shape (146400, 47)
+Transform categorical done, shape (146400, 47)
+Used 28 columns
+Prediction time: 10.424376010894775
+Score 119920.6630
+### Check dataset check_4_c
+Dataset read, shape (20000, 142)
+Transform datetime done, shape (20000, 157)
+Transform categorical done, shape (20000, 157)
+Used 98 columns
+Train time: 14.94640564918518
+Dataset read, shape (45385, 142)
+Transform datetime done, shape (45385, 157)
+Transform categorical done, shape (45385, 157)
+Used 98 columns
+Prediction time: 7.5927417278289795
+Score 0.9970
+### Check dataset check_5_c
+Dataset read, shape (20000, 16)
+Transform datetime done, shape (20000, 21)
+Transform categorical done, shape (20000, 21)
+Used 17 columns
+Train time: 5.252197027206421
+Dataset read, shape (169638, 16)
+Transform datetime done, shape (169638, 21)
+Transform categorical done, shape (169638, 21)
+Used 17 columns
+Prediction time: 8.423920631408691
+Score 0.7694
+### Check dataset check_6_c
+Dataset read, shape (20000, 113)
+Transform datetime done, shape (20000, 113)
+Transform categorical done, shape (20000, 113)
+Used 112 columns
+Train time: 23.676385164260864
+Dataset read, shape (72545, 113)
+Transform datetime done, shape (72545, 113)
+Transform categorical done, shape (72545, 113)
+Used 112 columns
+Prediction time: 4.0989463329315186
+Score 0.6440
+### Check dataset check_7_c
+Dataset read, shape (20000, 773)
+Transform datetime done, shape (20000, 783)
+Transform categorical done, shape (20000, 783)
+Used 570 columns
+Train time: 58.92742872238159
+Dataset read, shape (87062, 773)
+Transform datetime done, shape (87062, 783)
+Transform categorical done, shape (87062, 783)
+Used 570 columns
+Prediction time: 251.33394956588745
+Score 0.8104
+### Check dataset check_8_c
+Dataset read, shape (20000, 877)
+Transform datetime done, shape (20000, 1332)
+Transform categorical done, shape (20000, 1332)
+Used 1135 columns
+Train time: 69.6270272731781
+Dataset read, shape (61512, 877)
+Transform datetime done, shape (61512, 1332)
+Transform categorical done, shape (61512, 1332)
+Used 1135 columns
+Prediction time: 164.52787137031555
+Score 0.8665
+
+Process finished with exit code 0
