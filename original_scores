@@ -1,79 +1,99 @@
+C:\ProgramData\Anaconda3\python.exe C:/Users/admin/projects/sdsj2018_lightgbm_baseline/validate.py
 ### Check dataset check_1_r
 Dataset read, shape (365, 41)
 Transform datetime done, shape (365, 46)
 Transform categorical done, shape (365, 46)
 Used 43 columns
-Train time: 0.3030691146850586
+Train time: 0.3110623359680176
 Dataset read, shape (172, 41)
 Transform datetime done, shape (172, 46)
 Transform categorical done, shape (172, 46)
 Used 43 columns
-Prediction time: 0.14002108573913574
+Prediction time: 0.13403081893920898
 Score 10.5086
-
 ### Check dataset check_2_r
 Dataset read, shape (13958, 10)
 Transform datetime done, shape (13958, 10)
 Transform categorical done, shape (13958, 10)
 Used 8 columns
-Train time: 3.7558517456054688
+Train time: 3.699842929840088
 Dataset read, shape (5976, 10)
 Transform datetime done, shape (5976, 10)
 Transform categorical done, shape (5976, 10)
 Used 8 columns
-Prediction time: 0.3450772762298584
+Prediction time: 0.3270740509033203
 Score 1.2621
-
 ### Check dataset check_3_r
 Dataset read, shape (250000, 42)
 Transform datetime done, shape (250000, 47)
 Transform categorical done, shape (250000, 47)
 Used 43 columns
-Train time: 30.347915410995483
+Train time: 30.598999977111816
 Dataset read, shape (146400, 42)
 Transform datetime done, shape (146400, 47)
 Transform categorical done, shape (146400, 47)
 Used 43 columns
-Prediction time: 10.747443199157715
+Prediction time: 10.665427446365356
 Score 108488.7392
-
 ### Check dataset check_4_c
 Dataset read, shape (114130, 142)
 Transform datetime done, shape (114130, 157)
 Transform categorical done, shape (114130, 157)
 Used 98 columns
-Train time: 54.39890670776367
+Train time: 54.54908800125122
 Dataset read, shape (45385, 142)
 Transform datetime done, shape (45385, 157)
 Transform categorical done, shape (45385, 157)
 Used 98 columns
-Prediction time: 7.50971245765686
+Prediction time: 7.49569845199585
 Score 0.9996
-
 ### Check dataset check_5_c
 Dataset read, shape (467485, 16)
 Transform datetime done, shape (467485, 21)
 Transform categorical done, shape (467485, 21)
 Used 17 columns
-Train time: 41.3645920753479
+Train time: 41.0966899394989
 Dataset read, shape (169638, 16)
 Transform datetime done, shape (169638, 21)
 Transform categorical done, shape (169638, 21)
 Used 17 columns
-Prediction time: 8.142868041992188
+Prediction time: 8.14789080619812
 Score 0.7842
-
 ### Check dataset check_6_c
 Dataset read, shape (108814, 113)
 Transform datetime done, shape (108814, 113)
 Transform categorical done, shape (108814, 113)
 Used 112 columns
-Train time: 48.90189027786255
+Train time: 48.70912742614746
 Dataset read, shape (72545, 113)
 Transform datetime done, shape (72545, 113)
 Transform categorical done, shape (72545, 113)
 Used 112 columns
-Prediction time: 3.8299448490142822
+Prediction time: 3.818870782852173
 Score 0.6573
+### Check dataset check_7_c
+Dataset read, shape (92091, 773)
+Transform datetime done, shape (92091, 783)
+Transform categorical done, shape (92091, 783)
+Used 623 columns
+Train time: 314.5931282043457
+Dataset read, shape (87062, 773)
+Transform datetime done, shape (87062, 783)
+Transform categorical done, shape (87062, 783)
+Used 623 columns
+Prediction time: 252.92332482337952
+Score 0.8382
+### Check dataset check_8_c
+Dataset read, shape (143525, 877)
+Transform datetime done, shape (143525, 1332)
+Transform categorical done, shape (143525, 1332)
+Used 1138 columns
+Train time: 587.3119735717773
+Dataset read, shape (61512, 877)
+Transform datetime done, shape (61512, 1332)
+Transform categorical done, shape (61512, 1332)
+Used 1138 columns
+Prediction time: 162.32301878929138
+Score 0.8871
 
 Process finished with exit code 0
