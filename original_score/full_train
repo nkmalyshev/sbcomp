@@ -1,4 +1,3 @@
-C:\ProgramData\Anaconda3\python.exe C:/Users/admin/projects/sdsj2018_lightgbm_baseline/validate.py
 ### Check dataset check_1_r
 Dataset read, shape (365, 41)
 Transform datetime done, shape (365, 46)

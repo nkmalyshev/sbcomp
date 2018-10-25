@@ -63,6 +63,10 @@ def load_data(path, mode='train', sample=None):
     # features from datetime
     df, date_cols, orig_date_cols = transform_datetime_features(df)
 
+    new_cat = cat_frequencies(df)
+    df, old_cat = old_transform_categorical_features(df, {})
+
+
     # categorical encoding
     categorical_columns = transform_categorical_features(df)
     cat_cols = list(categorical_columns.keys())
@@ -98,9 +102,33 @@ def old_transform_categorical_features(df, categorical_values={}):
             if col_name.startswith('id') or col_name.startswith('string'):
                 categorical_values[col_name] = df[col_name].value_counts().to_dict()
 
-        if col_name in categorical_values:
-            col_unique_values = df[col_name].unique()
-            for unique_value in col_unique_values:
-                df.loc[df[col_name] == unique_value, col_name] = categorical_values[col_name].get(unique_value, -1)
+        # if col_name in categorical_values:
+        #     col_unique_values = df[col_name].unique()
+        #     for unique_value in col_unique_values:
+        #         df.loc[df[col_name] == unique_value, col_name] = categorical_values[col_name].get(unique_value, -1)
 
     return df, categorical_values
+
+
+def cat_frequencies(df, freq=None):
+    if freq is None:
+        freq = {}
+
+    cat_cols = [col for col in df.columns.values if col.startswith('id') or col.startswith('string')]
+
+    upd_freq = {}
+    for col in cat_cols:
+        upd_freq[col] = df[col].groupby(df[col]).size()
+
+    # categorical encoding
+    # for col_name in list(df.columns):
+    #     if col_name not in categorical_values:
+    #         if col_name.startswith('id') or col_name.startswith('string'):
+    #             categorical_values[col_name] = df[col_name].value_counts().to_dict()
+    #
+    #     if col_name in categorical_values:
+    #         col_unique_values = df[col_name].unique()
+    #         for unique_value in col_unique_values:
+    #             df.loc[df[col_name] == unique_value, col_name] = categorical_values[col_name].get(unique_value, -1)
+
+    return upd_freq
