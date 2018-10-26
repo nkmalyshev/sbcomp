@@ -25,9 +25,9 @@ def run_train_test(ds_name, metric, xgb_params):
     y_test = load_test_label(f'{path}/test-target.csv')
 
     # _, col_stats = preprocessing(x=x_train, y=y_train)
-    _, col_stats = preprocessing(x=x_train, y=y_train, sample_size=30000)
-    x_train_proc, _ = preprocessing(x=x_train, y=0, col_stats_init=col_stats)
-    x_test_proc, _ = preprocessing(x=x_test, y=0, col_stats_init=col_stats)
+    _, col_stats, freq_stats = preprocessing(x=x_train, y=y_train, sample_size=30000)
+    x_train_proc, _, _ = preprocessing(x=x_train, y=0, col_stats_init=col_stats, cat_freq_init=freq_stats)
+    x_test_proc, _, _ = preprocessing(x=x_test, y=0, col_stats_init=col_stats, cat_freq_init=freq_stats)
 
     # xgb
     dtrain = xgb.DMatrix(x_train_proc, label=y_train)
@@ -49,12 +49,12 @@ def main():
             'params': {
                 'silent': 1,
                 'objective': 'reg:linear' if mode == 'r' else 'binary:logistic',
-                'max_depth': 10,
+                'max_depth': 13,
                 'min_child_weight': 6,
-                'eta': .01,
-                'lambda': 1,
-                'alpha': 0},
-            'num_rounds': 200
+                'eta': .03,
+                'lambda': 3,
+                'alpha': .03},
+            'num_rounds': 300
         }
 
         start_time = time.time()

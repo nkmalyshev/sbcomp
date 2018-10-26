@@ -33,30 +33,27 @@ def transform_datetime_features(df):
             df[weekday] = df[col_name].dt.weekday
             df[day] = df[col_name].dt.day
             df[hour] = df[col_name].dt.hour
-            # df = df.drop(col_name, axis=1)
 
             res_date_cols += [year, month, weekday, day, hour]
-
-        df[res_date_cols] = df[res_date_cols].fillna(-1)
-
-        for col in res_date_cols:
-            if 'year' in col:
-                df[col] = df[col].astype(np.int16)
-            else:
-                df[col] = df[col].astype(np.int8)
         return df
 
 
-def check_column_name(name):
-    if name == 'line_id':
-        return False
-    if name.startswith('datetime'):
-        return False
-    if name.startswith('string'):
-        return False
-    if name.startswith('id'):
-        return False
-    return True
+def transform_categorigical_features(df, freq=None):
+    if df.shape[1] == 0:
+        return df, None
+    else:
+        cat_columns = df.columns.values
+        if freq is None:
+            out_freq = {col: (df[col].value_counts()/df.shape[0]).to_dict() for col in cat_columns}
+        else:
+            out_freq = freq
+
+        for col in cat_columns:
+            col_name = f'category_{col}'
+            df[col_name] = df[col].map(out_freq[col])
+
+        return df, out_freq
+
 
 
 def load_test_label(path):
@@ -104,14 +101,14 @@ def simple_feature_selector(cols, x, y, max_columns=50):
 
     ##############################################################
     xgb_cols = df_out.index.values[df_out['ols_rank'] < max_columns]
-    p_xgb, xgb_score = calc_xgb(x[xgb_cols], y)
-    ##############################################################
+    _, xgb_score = calc_xgb(x[xgb_cols], y)
 
     df_out = pd.concat([df_out, xgb_score], axis=1, sort=True)
     df_out = df_out.fillna(0)
 
     df_out = df_out.sort_values(by=['xgb_score'], ascending=False)
     df_out['xgb_rank'] = df_out.sort_values('xgb_score').reset_index().index
+    ##############################################################
 
     df_out['usefull'] = (df_out['ols_rank'] < max_columns) & (df_out['xgb_rank'] < max_columns) & (df_out['xgb_score'] > 0)
     return df_out
@@ -171,7 +168,9 @@ def collect_col_stats(df):
     return col_stats
 
 
-def preprocessing(x, y, col_stats_init=None, sample_size=None):
+def preprocessing(x, y, col_stats_init=None, cat_freq_init=None, sample_size=None):
+
+    x.loc[:, 'number_nulls'] = x.isnull().sum(axis=1)
 
     if (sample_size is not None):
         if (sample_size < x.shape[0]):
@@ -179,6 +178,7 @@ def preprocessing(x, y, col_stats_init=None, sample_size=None):
             sample_ids = ids[np.random.randint(0, ids.shape[0], sample_size)]
             x = x.loc[sample_ids]
             y = y.loc[sample_ids]
+
 
     col_stats = collect_col_stats(x)
     if col_stats_init is None:
@@ -193,12 +193,14 @@ def preprocessing(x, y, col_stats_init=None, sample_size=None):
 
     x_date = transform_datetime_features(x[cols_date].copy())
     x_number = x[cols_number]
-    x_sum = pd.concat([x_number, x_date], axis=1)
+    x_cat, cat_freq_out = transform_categorigical_features(x[cols_category].copy(), cat_freq_init)
+    x_agg = pd.concat([x_number, x_date, x_cat], axis=1)
 
+    # features selection
     if col_stats_init is None:
-        col_stats = collect_col_stats(x_sum)
+        col_stats = collect_col_stats(x_agg)
         cols = col_stats.index.values[col_stats.is_numeric & (col_stats['nunique'] > 1)]
-        fs_results = simple_feature_selector(cols, x_sum, y, max_columns=75)
+        fs_results = simple_feature_selector(cols, x_agg, y, max_columns=75)
         col_stats.update(fs_results)
         col_stats['usefull'] = col_stats['usefull'].astype('bool')
         col_stats_out = col_stats
@@ -206,6 +208,6 @@ def preprocessing(x, y, col_stats_init=None, sample_size=None):
         col_stats_out = col_stats_init
 
     cols_to_use = col_stats_out.index.values[col_stats_out.usefull]
-    x_out = x_sum[cols_to_use]
+    x_out = x_agg[cols_to_use]
 
-    return x_out, col_stats_out
+    return x_out, col_stats_out, cat_freq_out
