@@ -168,11 +168,17 @@ def collect_col_stats(df):
                 col_stats.loc[col_name, 'parent_feature'] = orig_name
 
     col_stats['usefull'] = False
-
     return col_stats
 
 
-def preprocessing(x, y, col_stats_init=None):
+def preprocessing(x, y, col_stats_init=None, sample_size=None):
+
+    if (sample_size is not None):
+        if (sample_size < x.shape[0]):
+            ids = x.index.values
+            sample_ids = ids[np.random.randint(0, ids.shape[0], sample_size)]
+            x = x.loc[sample_ids]
+            y = y.loc[sample_ids]
 
     col_stats = collect_col_stats(x)
     if col_stats_init is None:
@@ -192,7 +198,7 @@ def preprocessing(x, y, col_stats_init=None):
     if col_stats_init is None:
         col_stats = collect_col_stats(x_sum)
         cols = col_stats.index.values[col_stats.is_numeric & (col_stats['nunique'] > 1)]
-        fs_results = simple_feature_selector(cols, x_sum, y, max_columns=50)
+        fs_results = simple_feature_selector(cols, x_sum, y, max_columns=75)
         col_stats.update(fs_results)
         col_stats['usefull'] = col_stats['usefull'].astype('bool')
         col_stats_out = col_stats
