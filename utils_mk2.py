@@ -13,7 +13,6 @@ def get_mem(df):
 
 
 def transform_datetime_features(df):
-
     if df.shape[1] == 0:
         return df
     else:
@@ -157,29 +156,50 @@ def collect_col_stats(df):
     for col_name in list(col_stats.index.values):
         if col_name.startswith('id') or col_name.startswith('string'):
             col_stats.loc[col_name, 'default_type'] = 'category'
-        if col_name.startswith('number'):
+        elif col_name.startswith('number'):
             col_stats.loc[col_name, 'default_type'] = 'number'
-        if col_name.startswith('datetime'):
+        elif col_name.startswith('datetime'):
             col_stats.loc[col_name, 'default_type'] = 'datetime'
+
+    col_stats['parent_feature'] = ''
+    for col_name in list(col_stats.index.values):
+        for orig_name in list(col_stats.index.values[col_stats['default_type'] != '']):
+            if col_name.endswith(orig_name):
+                col_stats.loc[col_name, 'parent_feature'] = orig_name
+
+    col_stats['usefull'] = False
+
     return col_stats
 
 
-def preprocessing(x, y, mode='train'):
+def preprocessing(x, y, col_stats_init=None):
 
     col_stats = collect_col_stats(x)
-    cols_date = col_stats.index.values[col_stats['default_type'] == 'datetime']
-    cols_number = col_stats.index.values[col_stats['default_type'] == 'number']
-    cols_category = col_stats.index.values[col_stats['default_type'] == 'category']
+    if col_stats_init is None:
+        col_stats['usefull'] = True
+    else:
+        parent_features = col_stats_init['parent_feature'][col_stats_init['usefull']].unique()
+        col_stats.loc[parent_features, 'usefull'] = True
+
+    cols_date = col_stats.index.values[(col_stats['default_type'].values == 'datetime') & (col_stats['usefull'].values)]
+    cols_number = col_stats.index.values[(col_stats['default_type'].values == 'number') & (col_stats['usefull'].values)]
+    cols_category = col_stats.index.values[(col_stats['default_type'].values == 'category') & (col_stats['usefull'].values)]
 
     x_date = transform_datetime_features(x[cols_date].copy())
     x_number = x[cols_number]
     x_sum = pd.concat([x_number, x_date], axis=1)
 
-    col_stats = collect_col_stats(x_sum)
-    cols = col_stats.index.values[col_stats.is_numeric & (col_stats['nunique'] > 1)]
-    fs_results = simple_feature_selector(cols, x_sum, y, max_columns=50)
-    cols_to_use = fs_results.index.values[fs_results.usefull]
+    if col_stats_init is None:
+        col_stats = collect_col_stats(x_sum)
+        cols = col_stats.index.values[col_stats.is_numeric & (col_stats['nunique'] > 1)]
+        fs_results = simple_feature_selector(cols, x_sum, y, max_columns=50)
+        col_stats.update(fs_results)
+        col_stats['usefull'] = col_stats['usefull'].astype('bool')
+        col_stats_out = col_stats
+    else:
+        col_stats_out = col_stats_init
 
+    cols_to_use = col_stats_out.index.values[col_stats_out.usefull]
     x_out = x_sum[cols_to_use]
 
-    return x_out
+    return x_out, col_stats_out
