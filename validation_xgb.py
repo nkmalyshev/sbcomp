@@ -1,6 +1,6 @@
 import time
 import xgboost as xgb
-from utils_mk2 import load_data, load_test_label, preprocessing
+from utils_mk2 import load_data, load_test_label, preprocessing, xgb_gs
 from sklearn.metrics import mean_squared_error, roc_auc_score
 
 _DATA_PATH = 'data/'
@@ -24,15 +24,28 @@ def run_train_test(ds_name, metric, xgb_params):
     x_test, _, line_id_test, is_test, _ = load_data(f'{path}/test.csv', mode='test')
     y_test = load_test_label(f'{path}/test-target.csv')
 
-    # _, col_stats = preprocessing(x=x_train, y=y_train)
-    _, col_stats, freq_stats = preprocessing(x=x_train, y=y_train, sample_size=30000)
-    x_train_proc, _, _ = preprocessing(x=x_train, y=0, col_stats_init=col_stats, cat_freq_init=freq_stats)
-    x_test_proc, _, _ = preprocessing(x=x_test, y=0, col_stats_init=col_stats, cat_freq_init=freq_stats)
+    x_sample, y_sample, col_stats, freq_stats = preprocessing(x=x_train, y=y_train, sample_size=40000)
+    x_train_proc, _, _, _ = preprocessing(x=x_train, y=0, col_stats_init=col_stats, cat_freq_init=freq_stats)
+    x_test_proc, _, _, _ = preprocessing(x=x_test, y=0, col_stats_init=col_stats, cat_freq_init=freq_stats)
 
     # xgb
     dtrain = xgb.DMatrix(x_train_proc, label=y_train)
     dtest = xgb.DMatrix(x_test_proc)
-    xgb_model = xgb.train(xgb_params['params'], dtrain, xgb_params['num_rounds'])
+
+    # ####################################################################################
+    params_search = {
+        'max_depth': [3, 6, 9, 12],
+        'min_child_weight': [2, 4, 6]}
+    params_out = xgb_gs(xgb_params, params_search, xgb.DMatrix(x_sample, label=y_sample))
+
+    params_search = {
+        'lambda': [1, 2, 4],
+        'alpha': [0, .1, .3]}
+    params_out = xgb_gs(params_out, params_search, xgb.DMatrix(x_sample, label=y_sample))
+    # ####################################################################################
+    print(params_out)
+
+    xgb_model = xgb.train(params_out, dtrain, params_out['num_rounds'])
     p_train = xgb_model.predict(dtrain)
     p_test = xgb_model.predict(dtest)
 
@@ -40,30 +53,27 @@ def run_train_test(ds_name, metric, xgb_params):
 
     return xgb_err
 
+
 def main():
     start_time0 = time.time()
     for data_path in data_sets:
         mode = data_path[-1]
 
         xgb_params = {
-            'params': {
-                'silent': 1,
-                'objective': 'reg:linear' if mode == 'r' else 'binary:logistic',
-                'max_depth': 13,
-                'min_child_weight': 6,
-                'eta': .03,
-                'lambda': 3,
-                'alpha': .03},
-            'num_rounds': 300
-        }
+            'silent': 1,
+            'objective': 'reg:linear' if mode == 'r' else 'binary:logistic',
+            # 'eta': .03,
+            'num_rounds': 50}
 
         start_time = time.time()
         metric = mean_squared_error if mode == 'r' else roc_auc_score
         xgb_error = run_train_test(data_path, metric, xgb_params)
         print('train time: {:0.2f}'.format(time.time() - start_time))
 
-        print(f'xgb ds={data_path} eval_metric={metric.__name__} train_err={xgb_error[0]:.4f} test_err={xgb_error[1]:.4f}')
+        print(
+            f'xgb ds={data_path} eval_metric={metric.__name__} train_err={xgb_error[0]:.4f} test_err={xgb_error[1]:.4f}')
     print('train time: {:0.2f}'.format(time.time() - start_time0))
+
 
 if __name__ == '__main__':
     main()

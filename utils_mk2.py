@@ -168,6 +168,38 @@ def collect_col_stats(df):
     return col_stats
 
 
+def xgb_gs(params_init, params_search, dtrain):
+
+    # params_out = {your_key: params_init[your_key] for your_key in ['silent', 'objective', 'num_rounds']}
+
+    params_out = params_init
+
+    key0 = [*params_search][0]
+    key1 = [*params_search][1]
+    out_df = pd.DataFrame(columns=[key0, key1, 'num_rounds', 'error'])
+    iter = 0
+
+    for i in params_search[key0]:
+        for j in params_search[key1]:
+            params_out[key0] = i
+            params_out[key1] = j
+
+            cv_ij = xgb.cv(params_out, dtrain, num_boost_round=params_out['num_rounds']*2, nfold=4)
+            test_error = (cv_ij.iloc[:, 2]-min(cv_ij.iloc[:, 2]))/(max(cv_ij.iloc[:, 2])-min(cv_ij.iloc[:, 2]))
+            opt_rounds = max(test_error.index.values[test_error >= .05])
+            out_error = cv_ij.iloc[:, 2][opt_rounds]
+
+            out_df.loc[iter, :] = [i, j, opt_rounds, out_error]
+            iter = iter + 1
+
+    best_params = out_df.sort_values('error').reset_index(drop=True).loc[0, :]
+    params_out[key0] = best_params[key0]
+    params_out[key1] = best_params[key1]
+    params_out['num_rounds'] = best_params['num_rounds']
+
+    return params_out
+
+
 def preprocessing(x, y, col_stats_init=None, cat_freq_init=None, sample_size=None):
 
     x.loc[:, 'number_nulls'] = x.isnull().sum(axis=1)
@@ -210,4 +242,4 @@ def preprocessing(x, y, col_stats_init=None, cat_freq_init=None, sample_size=Non
     cols_to_use = col_stats_out.index.values[col_stats_out.usefull]
     x_out = x_agg[cols_to_use]
 
-    return x_out, col_stats_out, cat_freq_out
+    return x_out, y, col_stats_out, cat_freq_out
