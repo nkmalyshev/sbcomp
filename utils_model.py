@@ -64,7 +64,7 @@ def xgb_gs(params_init, params_search, dtrain):
     params_out = params_init
 
     cv_nrounds = xgb.cv(params_init, dtrain, num_boost_round=100, nfold=2, seed=0)
-    if cv_nrounds.iloc[:,2].nunique() == 0:
+    if cv_nrounds.iloc[:,2].nunique() == 1:
         opt_rounds = 1
     else:
         test_error = (cv_nrounds.iloc[:, 2] - min(cv_nrounds.iloc[:, 2])) / (max(cv_nrounds.iloc[:, 2]) - min(cv_nrounds.iloc[:, 2]))
@@ -92,7 +92,7 @@ def xgb_gs(params_init, params_search, dtrain):
 
             cv_ij = xgb.cv(params_out, dtrain, num_boost_round=int(params_out['num_rounds']*1.25), nfold=2, seed=0)
 
-            if cv_ij.iloc[:, 2].nunique() == 0:
+            if cv_ij.iloc[:, 2].nunique() == 1:
                 opt_rounds = 1
             else:
                 test_error = (cv_ij.iloc[:, 2] - min(cv_ij.iloc[:, 2])) / (
