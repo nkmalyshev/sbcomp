@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
-import xgboost as xgb
-from sdsj_feat import cat_frequencies
+from utils_model import calc_xgb, calc_ols
 
 ONEHOT_MAX_UNIQUE_VALUES = 20
 BIG_DATASET_SIZE = 500 * 1024 * 1024
@@ -114,36 +113,6 @@ def simple_feature_selector(cols, x, y, max_columns=50):
     return df_out
 
 
-def calc_ols(x, y, reg_l2):
-    power = 2
-    for feature in x.columns.values:
-        x = x.fillna(x[feature].mean())
-        x[feature] = x[feature] / max(abs(x[feature]))
-    x = pd.concat([x, x ** 2], axis=1)
-    x['const'] = 1
-    ols_w = np.dot(np.linalg.inv(np.dot(x.T, x) + reg_l2 * np.eye(power + 1, dtype=int)), np.dot(x.T, y))
-    p = np.dot(x, ols_w)
-    return p
-
-
-def calc_xgb(x, y):
-    params = {
-        'params': {
-            'silent': 1,
-            'objective': 'reg:linear',
-            'max_depth': 10,
-            'min_child_weight': 1,
-            'eta': .03},
-        'num_rounds': 50}
-
-    dtrain = xgb.DMatrix(x, label=y)
-    xgb_model = xgb.train(params['params'], dtrain, params['num_rounds'])
-    f_score = pd.DataFrame.from_dict(data=xgb_model.get_score(importance_type='gain'), orient='index', columns=['xgb_score'])
-    f_score['xgb_score'] = f_score['xgb_score']/max(f_score['xgb_score'])
-    p = xgb_model.predict(dtrain)
-    return p, f_score
-
-
 def collect_col_stats(df):
     col_stats = df.describe(include='all').T
     col_stats['nunique'] = df.nunique()
@@ -166,38 +135,6 @@ def collect_col_stats(df):
 
     col_stats['usefull'] = False
     return col_stats
-
-
-def xgb_gs(params_init, params_search, dtrain):
-
-    # params_out = {your_key: params_init[your_key] for your_key in ['silent', 'objective', 'num_rounds']}
-
-    params_out = params_init
-
-    key0 = [*params_search][0]
-    key1 = [*params_search][1]
-    out_df = pd.DataFrame(columns=[key0, key1, 'num_rounds', 'error'])
-    iter = 0
-
-    for i in params_search[key0]:
-        for j in params_search[key1]:
-            params_out[key0] = i
-            params_out[key1] = j
-
-            cv_ij = xgb.cv(params_out, dtrain, num_boost_round=params_out['num_rounds']*2, nfold=4)
-            test_error = (cv_ij.iloc[:, 2]-min(cv_ij.iloc[:, 2]))/(max(cv_ij.iloc[:, 2])-min(cv_ij.iloc[:, 2]))
-            opt_rounds = max(test_error.index.values[test_error >= .05])
-            out_error = cv_ij.iloc[:, 2][opt_rounds]
-
-            out_df.loc[iter, :] = [i, j, opt_rounds, out_error]
-            iter = iter + 1
-
-    best_params = out_df.sort_values('error').reset_index(drop=True).loc[0, :]
-    params_out[key0] = best_params[key0]
-    params_out[key1] = best_params[key1]
-    params_out['num_rounds'] = best_params['num_rounds']
-
-    return params_out
 
 
 def preprocessing(x, y, col_stats_init=None, cat_freq_init=None, sample_size=None):
