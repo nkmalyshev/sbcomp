@@ -54,31 +54,42 @@ def calc_xgb(x, y):
     dtrain = xgb.DMatrix(x, label=y)
     xgb_model = xgb.train(params['params'], dtrain, params['num_rounds'])
     f_score = pd.DataFrame.from_dict(data=xgb_model.get_score(importance_type='gain'), orient='index', columns=['xgb_score'])
-    f_score['xgb_score'] = f_score['xgb_score']/max(f_score['xgb_score'])
+    f_score.sort_values('xgb_score').reset_index(drop=True)
+    f_score = f_score.sort_values('xgb_score', ascending=False)
+    f_score['xgb_score'] = f_score['xgb_score']/sum(f_score['xgb_score'])
     p = xgb_model.predict(dtrain)
     return p, f_score
+
+
+def xgb_cv(xgb_params, cv_params, dtrain):
+    cv_ij = xgb.cv(xgb_params, dtrain, num_boost_round=xgb_params['num_rounds'], nfold=cv_params['nfold'], seed=0)
+
+    if cv_ij.iloc[:, 2].nunique() == 1:
+        opt_rounds = 1
+    else:
+        test_error = (cv_ij.iloc[:, 2] - min(cv_ij.iloc[:, 2])) / (
+                max(cv_ij.iloc[:, 2]) - min(cv_ij.iloc[:, 2]))
+        test_error = test_error[test_error.index.values <= max(test_error[test_error == 0].index.values)]
+        if test_error.index.values[test_error >= cv_params['threshold']].shape[0] == 0:
+            opt_rounds = 1
+        else:
+            opt_rounds = max(test_error.index.values[test_error >= cv_params['threshold']])
+
+    test_error = cv_ij.iloc[:, 2][opt_rounds]
+    train_error = cv_ij.iloc[:, 0][opt_rounds]
+    return test_error, train_error, opt_rounds
 
 
 def xgb_gs(params_init, params_search, dtrain):
 
     params_out = params_init
 
-    cv_nrounds = xgb.cv(params_init, dtrain, num_boost_round=100, nfold=2, seed=0)
-    if cv_nrounds.iloc[:,2].nunique() == 1:
-        opt_rounds = 1
-    else:
-        test_error = (cv_nrounds.iloc[:, 2] - min(cv_nrounds.iloc[:, 2])) / (max(cv_nrounds.iloc[:, 2]) - min(cv_nrounds.iloc[:, 2]))
-        test_error = test_error[test_error.index.values <= max(test_error[test_error == 0].index.values)]
-        if test_error.index.values[test_error >= .1].shape[0] == 0:
-            opt_rounds = 1
-        else:
-            opt_rounds = max(test_error.index.values[test_error >= .1])
+    params_out['num_rounds'] = 200
+    cv_params = {'nfold': 2, 'threshold': .05}
+    _, _, opt_rounds = xgb_cv(params_init, cv_params, dtrain)
+    params_out['num_rounds'] = int(opt_rounds*1.25)
 
-    params_out['num_rounds'] = opt_rounds
-    cv_nrounds['diff'] = cv_nrounds.iloc[:, 2] - cv_nrounds.iloc[:, 0]
     print(opt_rounds)
-
-    # cv_nrounds.to_csv('qwe.csv')
 
     key0 = [*params_search][0]
     key1 = [*params_search][1]
@@ -90,26 +101,11 @@ def xgb_gs(params_init, params_search, dtrain):
             params_out[key0] = i
             params_out[key1] = j
 
-            cv_ij = xgb.cv(params_out, dtrain, num_boost_round=int(params_out['num_rounds']*1.25), nfold=2, seed=0)
-
-            if cv_ij.iloc[:, 2].nunique() == 1:
-                opt_rounds = 1
-            else:
-                test_error = (cv_ij.iloc[:, 2] - min(cv_ij.iloc[:, 2])) / (
-                            max(cv_ij.iloc[:, 2]) - min(cv_ij.iloc[:, 2]))
-                test_error = test_error[test_error.index.values <= max(test_error[test_error == 0].index.values)]
-                if test_error.index.values[test_error >= .1].shape[0] == 0:
-                    opt_rounds = 1
-                else:
-                    opt_rounds = max(test_error.index.values[test_error >= .1])
-
-            test_error = cv_ij.iloc[:, 2][opt_rounds]
-            train_error = cv_ij.iloc[:, 0][opt_rounds]
+            cv_params = {'nfold': 2, 'threshold': .1}
+            test_error, train_error, opt_rounds = xgb_cv(params_out, cv_params, dtrain)
 
             out_df.loc[iter, :] = [i, j, opt_rounds, test_error, train_error]
             iter = iter + 1
-
-
 
     out_df = out_df.sort_values('test_error').reset_index(drop=True)
     out_df['diff'] = out_df['test_error']-out_df['train_error']
@@ -145,14 +141,14 @@ def xgb_train_wrapper(x, y, metric, sample_size=None):
         'num_rounds': 0}
 
     params_search = {
-        'max_depth': [2, 3, 5, 7, 9],
+        'max_depth': [2, 3, 5, 7, 9, 13],
         'min_child_weight': [1, 2, 4, 6],
     }
     params_out = xgb_gs(init_params, params_search, dsample)
-    # params_search = {
-    #     'lambda': [0, 1, 3],
-    #     'alpha': [0, .1, .3]}
-    # params_out = xgb_gs(params_out, params_search, dsample)
+    params_search = {
+        'lambda': [0, 1, 3],
+        'alpha': [0, .1, .3]}
+    params_out = xgb_gs(params_out, params_search, dsample)
     print(params_out)
 
     model = xgb.train(params_out, dtrain, params_out['num_rounds'])

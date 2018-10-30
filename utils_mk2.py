@@ -177,6 +177,19 @@ def preprocessing(x, y, col_stats_init=None, cat_freq_init=None, sample_size=Non
         col_stats_out = col_stats_init
 
     cols_to_use = col_stats_out.index.values[col_stats_out.usefull]
-    x_out = x_agg[cols_to_use]
+    x_out = x_agg[cols_to_use].copy()
+
+
+    col_norm = col_stats_out.loc[cols_to_use]
+    col_norm = col_norm[['mean', 'std', 'nunique', '50%', 'max', 'min']]
+    col_norm.columns = ['mean', 'std', 'nunique', 'median', 'max', 'min']
+    col_norm = col_norm.sort_values('nunique')
+    col_norm = col_norm.loc[col_norm['nunique'] > 2]
+    x_out.loc[:, col_norm.index.values] = (x_out.loc[:, col_norm.index.values] - col_norm['mean'])/(col_norm['std']*3)
+
+    # fillna
+    x_out = x_out.fillna(-1)
+    # norm
+
 
     return x_out, y, col_stats_out, cat_freq_out
