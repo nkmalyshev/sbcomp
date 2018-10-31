@@ -64,6 +64,9 @@ def calc_xgb(x, y):
 def xgb_cv(xgb_params, cv_params, dtrain):
     cv_ij = xgb.cv(xgb_params, dtrain, num_boost_round=xgb_params['num_rounds'], nfold=cv_params['nfold'], seed=0)
 
+    # test_error = (cv_ij.iloc[:, 2] - min(cv_ij.iloc[:, 2]))
+    # opt_rounds = min(test_error.index.values[test_error == 0])
+
     if cv_ij.iloc[:, 2].nunique() == 1:
         opt_rounds = 1
     else:
@@ -80,16 +83,16 @@ def xgb_cv(xgb_params, cv_params, dtrain):
     return test_error, train_error, opt_rounds
 
 
-def xgb_gs(params_init, params_search, dtrain):
+def xgb_gs(params_out, params_search, dtrain):
 
-    params_out = params_init
+    params_out['num_rounds'] = 300
+    cv_params = {'nfold': 2, 'threshold': .01}
+    _, _, opt_rounds = xgb_cv(params_out, cv_params, dtrain)
+    rounds_coeff = int(opt_rounds / 75)+1
+    params_out['eta'] = round(params_out['eta'] * rounds_coeff,3)
+    params_out['num_rounds'] = int((opt_rounds/rounds_coeff)*1.25)+1
 
-    params_out['num_rounds'] = 200
-    cv_params = {'nfold': 2, 'threshold': .05}
-    _, _, opt_rounds = xgb_cv(params_init, cv_params, dtrain)
-    params_out['num_rounds'] = int(opt_rounds*1.25)+1
-
-    print(opt_rounds)
+    print(params_out['num_rounds'], params_out['eta'])
 
     key0 = [*params_search][0]
     key1 = [*params_search][1]
@@ -141,13 +144,18 @@ def xgb_train_wrapper(x, y, metric, sample_size=None):
         'num_rounds': 0}
 
     params_search = {
-        'max_depth': [2, 3, 5, 7, 9, 13],
-        'min_child_weight': [1, 2, 4, 6],
+        'max_depth': [2, 5, 7, 13],
+        'min_child_weight': [1, 2, 6],
+        # 'max_depth': [2, 3, 5, 7, 9, 13],
+        # 'min_child_weight': [1, 2, 4, 6],
     }
     params_out = xgb_gs(init_params, params_search, dsample)
     params_search = {
-        'lambda': [0, 1, 3],
-        'alpha': [0, .1, .3]}
+        'lambda': [0, 3],
+        'alpha': [0, .3],
+        # 'lambda': [0, 1, 3],
+        # 'alpha': [0, .1, .3],
+    }
     params_out = xgb_gs(params_out, params_search, dsample)
     print(params_out)
 
