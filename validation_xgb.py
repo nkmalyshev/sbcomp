@@ -20,11 +20,15 @@ data_sets = [
 def run_train_test(ds_name, metric):
     path = _DATA_PATH + ds_name
 
-    x_train, y_train, line_id_train, is_test, is_big = load_data(f'{path}/train.csv', mode='train')
-    x_test, _, line_id_test, is_test, _ = load_data(f'{path}/test.csv', mode='test')
+    x_sample, y_sample, _, header, _ = load_data(f'{path}/train.csv', mode='train', input_rows=10000)
+    _, _, col_stats, freq_stats = preprocessing(x=x_sample, y=y_sample)
+    cols_to_use = col_stats['parent_feature'][col_stats['usefull']].unique()
+    cols_to_use = cols_to_use[np.isin(cols_to_use, header)] # required because of a bug with 'number_nulls' - bad naming
+
+    x_train, y_train, _, _, _ = load_data(f'{path}/train.csv', mode='train', input_cols=np.append(cols_to_use, ['target', 'line_id']))
+    x_test, _, line_id_test, _, _ = load_data(f'{path}/test.csv', mode='test', input_cols=np.append(cols_to_use, ['line_id']))
     y_test = load_test_label(f'{path}/test-target.csv')
 
-    _, _, col_stats, freq_stats = preprocessing(x=x_train, y=y_train, sample_size=20000)
     x_train_proc, _, _, _ = preprocessing(x=x_train, y=0, col_stats_init=col_stats, cat_freq_init=freq_stats)
     x_test_proc, _, _, _ = preprocessing(x=x_test, y=0, col_stats_init=col_stats, cat_freq_init=freq_stats)
 

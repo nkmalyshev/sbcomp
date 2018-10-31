@@ -87,7 +87,7 @@ def xgb_gs(params_init, params_search, dtrain):
     params_out['num_rounds'] = 200
     cv_params = {'nfold': 2, 'threshold': .05}
     _, _, opt_rounds = xgb_cv(params_init, cv_params, dtrain)
-    params_out['num_rounds'] = int(opt_rounds*1.25)
+    params_out['num_rounds'] = int(opt_rounds*1.25)+1
 
     print(opt_rounds)
 
@@ -118,7 +118,7 @@ def xgb_gs(params_init, params_search, dtrain):
 
     params_out[key0] = best_params[key0]
     params_out[key1] = best_params[key1]
-    params_out['num_rounds'] = best_params['num_rounds']
+    params_out['num_rounds'] = best_params['num_rounds']+1
 
     return params_out
 

@@ -60,28 +60,24 @@ def load_test_label(path):
     return y
 
 
-def load_data(path, mode='train'):
+def load_data(path, mode='train', input_rows=None, input_cols=None):
     is_big = False
     if mode == 'train':
-        df = pd.read_csv(path, low_memory=False)
+        df = pd.read_csv(path, low_memory=False, nrows=input_rows, usecols=input_cols, header=0)
+        header = df.columns.values
         df.set_index('line_id', inplace=True)
         line_id = pd.DataFrame(df.index)
         y = df.target
         df = df.drop('target', axis=1)
-        df['is_test'] = 0
-        is_test = df.is_test
-        df = df.drop('is_test', axis=1)
         if df.memory_usage().sum() > BIG_DATASET_SIZE:
             is_big = True
     else:
-        df = pd.read_csv(path, low_memory=False)
+        df = pd.read_csv(path, low_memory=False, nrows=input_rows, usecols=input_cols, header=0)
+        header = df.columns.values
         df.set_index('line_id', inplace=True)
         line_id = pd.DataFrame(df.index)
-        df['is_test'] = 0
-        is_test = df.is_test
-        df = df.drop('is_test', axis=1)
         y = None
-    return df, y, line_id, is_test, is_big
+    return df, y, line_id, header, is_big
 
 
 def simple_feature_selector(cols, x, y, max_columns=50):
