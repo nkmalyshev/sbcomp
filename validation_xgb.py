@@ -23,6 +23,7 @@ def run_train_test(ds_name, metric):
     overall_params = {
         'prerocessin_ss': 10000,
         'xgb_params_search_ss': 40000,
+        'small_data_rows': 10000,
         'feature_selections_cols': 25
     }
 
@@ -35,12 +36,10 @@ def run_train_test(ds_name, metric):
     x_test, _, line_id_test, _, _ = load_data(f'{path}/test.csv', mode='test', input_cols=np.append(cols_to_use, ['line_id']))
     y_test = load_test_label(f'{path}/test-target.csv')
 
-    x_train_proc, _, _, _ = preprocessing(x=x_train, y=0, col_stats_init=col_stats, cat_freq_init=None)
+    x_train_proc, _, _, freq_stats = preprocessing(x=x_train, y=0, col_stats_init=col_stats, cat_freq_init=None) #
     x_test_proc, _, _, _ = preprocessing(x=x_test, y=0, col_stats_init=col_stats, cat_freq_init=freq_stats)
 
-    # print(y_train.shape[0], header.shape[0], cols_to_use.shape[0])
-
-    xgb_model = xgb_train_wrapper(x_train_proc, y_train, metric, overall_params['xgb_params_search_ss'])
+    xgb_model = xgb_train_wrapper(x_train_proc, y_train, metric, overall_params['xgb_params_search_ss'], overall_params['small_data_rows'])
     p_xgb_train = xgb_predict_wrapper(x_train_proc, xgb_model)
     p_xgb_test = xgb_predict_wrapper(x_test_proc, xgb_model)
 

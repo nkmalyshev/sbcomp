@@ -91,8 +91,8 @@ def xgb_cv(xgb_params, cv_params, dtrain):
 def xgb_gs(params_out, params_search, dtrain):
 
     params_out['num_rounds'] = 300
-    cv_params_eta = {'nfold': 2, 'threshold': .01}
-    cv_params_search = {'nfold': 2, 'threshold': .1}
+    cv_params_eta = {'nfold': 3, 'threshold': .01}
+    cv_params_search = {'nfold': 3, 'threshold': .1}
 
     t, tr, opt_rounds = xgb_cv(params_out, cv_params_eta, dtrain)
     rounds_coeff = opt_rounds / 50
@@ -130,7 +130,7 @@ def xgb_gs(params_out, params_search, dtrain):
     return params_out
 
 
-def xgb_train_wrapper(x, y, metric, sample_size=None):
+def xgb_train_wrapper(x, y, metric, sample_size=None, small_sample_rows=10000):
 
     dtrain = xgb.DMatrix(x, label=y)
     dsample = dtrain
@@ -149,17 +149,25 @@ def xgb_train_wrapper(x, y, metric, sample_size=None):
         'alpha': .1,
         'num_rounds': 0}
 
-    params_search = {
-        'max_depth': [2, 5, 7, 13],
-        'min_child_weight': [1, 2, 6],
-    }
-    params_out = xgb_gs(init_params, params_search, dsample)
-    # params_search = {
-    #     'lambda': [0, 3],
-    #     'alpha': [0, .3],
-    # }
-    # params_out = xgb_gs(params_out, params_search, dsample)
-    print(params_out)
+    if y.shape[0] <= small_sample_rows:
+        params_search = {
+            'max_depth': [2, 4, 6, 8],
+            'min_child_weight': [1, 2, 4, 6],
+        }
+        params_out = xgb_gs(init_params, params_search, dsample)
+        params_search = {
+            'lambda': [1, 2, 4, 6],
+            'alpha': [0, .1, .3],
+        }
+        params_out = xgb_gs(params_out, params_search, dsample)
+    else:
+        params_search = {
+            'max_depth': [8, 10, 12],
+            'min_child_weight': [1, 2, 6],
+        }
+        params_out = xgb_gs(init_params, params_search, dsample)
+
+    print(x.shape, params_out)
 
     model = xgb.train(params_out, dtrain, params_out['num_rounds'])
     return model
