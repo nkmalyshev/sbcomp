@@ -155,15 +155,22 @@ def xgb_train_wrapper(x, y, metric, sample_size=None, small_sample_rows=10000):
             'min_child_weight': [1, 2, 4, 6],
         }
         params_out = xgb_gs(init_params, params_search, dsample)
+
         params_search = {
             'lambda': [1, 2, 4, 6],
             'alpha': [0, .1, .3],
         }
         params_out = xgb_gs(params_out, params_search, dsample)
+
+        params_search = {
+            'colsample_bytree': [.6, .7, .8, .9, 1],
+            'subsample': [.6, .7, .8, .9, 1],
+        }
+        params_out = xgb_gs(params_out, params_search, dsample)
     else:
         params_search = {
-            'max_depth': [8, 10, 12],
-            'min_child_weight': [1, 2, 6],
+            'max_depth': [8, 12],
+            'min_child_weight': [2, 6],
         }
         params_out = xgb_gs(init_params, params_search, dsample)
 
