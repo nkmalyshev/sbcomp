@@ -165,7 +165,7 @@ def preprocessing(x, y, col_stats_init=None, cat_freq_init=None, sample_size=Non
     if col_stats_init is None:
         col_stats = collect_col_stats(x_agg)
         cols = col_stats.index.values[col_stats.is_numeric & (col_stats['nunique'] > 1)]
-        fs_results = simple_feature_selector(cols, x_agg, y, max_columns=75)
+        fs_results = simple_feature_selector(cols, x_agg, y, max_columns=50)
         col_stats.update(fs_results)
         col_stats['usefull'] = col_stats['usefull'].astype('bool')
         col_stats_out = col_stats

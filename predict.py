@@ -2,8 +2,11 @@ import argparse
 import os
 import pickle
 import time
+import numpy as np
 import pandas as pd
-from sdsj_feat import load_data
+from utils_mk2 import load_data, preprocessing
+from utils_model import xgb_predict_wrapper
+
 
 # use this to stop the algorithm before time limit exceeds
 TIME_LIMIT = int(os.environ.get('TIME_LIMIT', 5 * 60))
@@ -22,18 +25,17 @@ if __name__ == '__main__':
     with open(model_config_filename, 'rb') as fin:
         model_config = pickle.load(fin)
 
-    X_scaled, _, _, df = load_data(args.test_csv, mode='test')
+    xgb_model = model_config['model']
+    cols_to_use = model_config['cols_to_use']
+    col_stats = model_config['col_stats']
+    freq_stats = model_config['freq_stats']
 
-    model = model_config['model']
-    # df = pd.read_csv(args.test_csv, usecols=['line_id',])
-    # print(args.test_csv)
-    # df = pd.read_csv(args.test_csv)
-    if model_config['mode'] == 'regression':
-        df['prediction'] = model.predict(X_scaled)
-    elif model_config['mode'] == 'classification':
-        # df['prediction'] = model.predict_proba(X_scaled)[:, 1]
-        df['prediction'] = model.predict(X_scaled)
+    x_test, _, line_id_test, _, _ = load_data(args.test_csv, mode='test', input_cols=np.append(cols_to_use, ['line_id']))
+    x_test_proc, _, _, _ = preprocessing(x=x_test, y=0, col_stats_init=col_stats, cat_freq_init=freq_stats)
+    p_xgb_test = xgb_predict_wrapper(x_test_proc, xgb_model)
 
-    df[['line_id', 'prediction']].to_csv(args.prediction_csv, index=False)
+    line_id_test['prediction'] = p_xgb_test
+    line_id_test[['line_id', 'prediction']].to_csv(args.prediction_csv, index=False)
+    # df[['line_id', 'prediction']].to_csv(args.prediction_csv, index=False)
 
     print('Prediction time: {:0.2f}'.format(time.time() - start_time))

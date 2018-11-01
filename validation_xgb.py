@@ -20,7 +20,7 @@ data_sets = [
 def run_train_test(ds_name, metric):
     path = _DATA_PATH + ds_name
 
-    x_sample, y_sample, _, header, _ = load_data(f'{path}/train.csv', mode='train', input_rows=20000)
+    x_sample, y_sample, _, header, _ = load_data(f'{path}/train.csv', mode='train', input_rows=10000)
     _, _, col_stats, freq_stats = preprocessing(x=x_sample, y=y_sample)
     cols_to_use = col_stats['parent_feature'][col_stats['usefull']].unique()
     cols_to_use = cols_to_use[np.isin(cols_to_use, header)] # required because of a bug with 'number_nulls' - bad naming

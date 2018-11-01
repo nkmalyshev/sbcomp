@@ -2,9 +2,11 @@ import argparse
 import os
 import pickle
 import time
-import lightgbm as lgb
-from sdsj_feat import load_data
-from sklearn.preprocessing import LabelEncoder
+import numpy as np
+from utils_mk2 import load_data, preprocessing
+from utils_model import xgb_train_wrapper, xgb_predict_wrapper
+from sklearn.metrics import mean_squared_error, roc_auc_score
+
 
 # use this to stop the algorithm before time limit exceeds
 TIME_LIMIT = int(os.environ.get('TIME_LIMIT', 5 * 60))
@@ -20,34 +22,30 @@ if __name__ == '__main__':
 
     start_time = time.time()
 
-    df_X, df_y, model_config, _ = load_data(args.train_csv)
+    ###############################################################
+    metric = mean_squared_error if args.mode == 'regression' else roc_auc_score
+    x_sample, y_sample, _, header, _ = load_data(args.train_csv, mode='train', input_rows=10000)
+    _, _, col_stats, freq_stats = preprocessing(x=x_sample, y=y_sample)
+    cols_to_use = col_stats['parent_feature'][col_stats['usefull']].unique()
+    cols_to_use = cols_to_use[np.isin(cols_to_use, header)]
 
-    model_config['mode'] = args.mode
+    x_train, y_train, _, _, _ = load_data(args.train_csv, mode='train', input_cols=np.append(cols_to_use, ['target', 'line_id']))
+    x_train_proc, _, _, _ = preprocessing(x=x_train, y=0, col_stats_init=col_stats, cat_freq_init=freq_stats)
 
-    params = {
-        'task': 'train',
-        'boosting_type': 'gbdt',
-        'objective': 'regression' if args.mode == 'regression' else 'binary',
-        'metric': 'rmse',
-        "learning_rate": 0.01,
-        "num_leaves": 200,
-        "feature_fraction": 0.70,
-        "bagging_fraction": 0.70,
-        'bagging_freq': 4,
-        "max_depth": -1,
-        "verbosity": -1,
-        "reg_alpha": 0.3,
-        "reg_lambda": 0.1,
-        "min_child_weight": 10,
-        'zero_as_missing': True,
-        'num_threads': 4,
-        'seed': 1
-    }
+    xgb_model = xgb_train_wrapper(x_train_proc, y_train, metric, 20000)
+    p_xgb_train = xgb_predict_wrapper(x_train_proc, xgb_model)
 
-    model = lgb.train(params, lgb.Dataset(df_X, label=df_y), 600)
+    model_config = dict()
+    model_config['model'] = xgb_model
+    model_config['cols_to_use'] = cols_to_use
+    model_config['col_stats'] = col_stats
+    model_config['freq_stats'] = freq_stats
 
-    model_config['model'] = model
-    model_config['params'] = params
+    # x_test, _, line_id_test, _, _ = load_data(f'{path}/test.csv', mode='test', input_cols=np.append(cols_to_use, ['line_id']))
+    # x_test_proc, _, _, _ = preprocessing(x=x_test, y=0, col_stats_init=col_stats, cat_freq_init=freq_stats)
+    # p_xgb_test = xgb_predict_wrapper(x_test_proc, xgb_model)
+
+    ###############################################################
 
     model_config_filename = os.path.join(args.model_dir, 'model_config.pkl')
     with open(model_config_filename, 'wb') as fout:
