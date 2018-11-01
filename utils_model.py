@@ -146,7 +146,7 @@ def xgb_train_wrapper(x, y, metric, sample_size=None):
     init_params = {
         'silent': 1,
         'objective': 'reg:linear' if metric.__name__ == 'mean_squared_error' else 'binary:logistic',
-        'eta': .3,
+        'eta': .03,
         'lambda': 3,
         'alpha': .1,
         'num_rounds': 0}

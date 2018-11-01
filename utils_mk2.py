@@ -81,31 +81,37 @@ def load_data(path, mode='train', input_rows=None, input_cols=None):
 
 
 def simple_feature_selector(cols, x, y, max_columns=50):
-    df_out = pd.DataFrame(
-        {'col_names': cols, 'ols_error': -1})
-    df_out.set_index('col_names', inplace=True)
+    # df_out = pd.DataFrame(
+    #     {'col_names': cols, 'ols_error': -1})
+    # df_out.set_index('col_names', inplace=True)
+    #
+    # for col in df_out.index.values:
+    #     xi = pd.DataFrame({'feature': x[col]})
+    #     p_ols = calc_ols(xi, y, .3)
+    #     ols_error = np.sqrt(np.dot(p_ols - y, p_ols - y) / y.shape[0])
+    #     df_out.loc[col, 'ols_error'] = ols_error
+    #
+    # df_out = df_out.sort_values('ols_error')
+    # df_out['ols_rank'] = df_out.sort_values('ols_error').reset_index().index
+    #
+    # ##############################################################
+    # xgb_cols = df_out.index.values[df_out['ols_rank'] < max_columns]
+    # _, xgb_score = calc_xgb(x[xgb_cols], y)
+    #
+    # df_out = pd.concat([df_out, xgb_score], axis=1, sort=True)
+    # df_out = df_out.fillna(0)
+    #
+    # df_out = df_out.sort_values(by=['xgb_score'], ascending=False)
+    # df_out['xgb_rank'] = df_out.sort_values('xgb_score').reset_index().index
+    # ##############################################################
+    #
+    # df_out['usefull'] = (df_out['ols_rank'] < max_columns) & (df_out['xgb_rank'] < max_columns) & (df_out['xgb_score'] > 0)
 
-    for col in df_out.index.values:
-        xi = pd.DataFrame({'feature': x[col]})
-        p_ols = calc_ols(xi, y, .3)
-        ols_error = np.sqrt(np.dot(p_ols - y, p_ols - y) / y.shape[0])
-        df_out.loc[col, 'ols_error'] = ols_error
-
-    df_out = df_out.sort_values('ols_error')
-    df_out['ols_rank'] = df_out.sort_values('ols_error').reset_index().index
-
-    ##############################################################
-    xgb_cols = df_out.index.values[df_out['ols_rank'] < max_columns]
-    _, xgb_score = calc_xgb(x[xgb_cols], y)
-
-    df_out = pd.concat([df_out, xgb_score], axis=1, sort=True)
-    df_out = df_out.fillna(0)
-
-    df_out = df_out.sort_values(by=['xgb_score'], ascending=False)
+    _, df_out = calc_xgb(x[cols], y)
     df_out['xgb_rank'] = df_out.sort_values('xgb_score').reset_index().index
-    ##############################################################
+    df_out['usefull'] = (df_out['xgb_rank'] < max_columns) & (df_out['xgb_score'] > 0)
 
-    df_out['usefull'] = (df_out['ols_rank'] < max_columns) & (df_out['xgb_rank'] < max_columns) & (df_out['xgb_score'] > 0)
+
     return df_out
 
 
@@ -165,7 +171,7 @@ def preprocessing(x, y, col_stats_init=None, cat_freq_init=None, sample_size=Non
     if col_stats_init is None:
         col_stats = collect_col_stats(x_agg)
         cols = col_stats.index.values[col_stats.is_numeric & (col_stats['nunique'] > 1)]
-        fs_results = simple_feature_selector(cols, x_agg, y, max_columns=50)
+        fs_results = simple_feature_selector(cols, x_agg, y, max_columns=75)
         col_stats.update(fs_results)
         col_stats['usefull'] = col_stats['usefull'].astype('bool')
         col_stats_out = col_stats
