@@ -20,8 +20,14 @@ data_sets = [
 def run_train_test(ds_name, metric):
     path = _DATA_PATH + ds_name
 
-    x_sample, y_sample, _, header, _ = load_data(f'{path}/train.csv', mode='train', input_rows=10000)
-    _, _, col_stats, freq_stats = preprocessing(x=x_sample, y=y_sample)
+    overall_params = {
+        'prerocessin_ss': 10000,
+        'xgb_params_search_ss': 40000,
+        'feature_selections_cols': 25
+    }
+
+    x_sample, y_sample, _, header, _ = load_data(f'{path}/train.csv', mode='train', input_rows=overall_params['prerocessin_ss'])
+    _, _, col_stats, freq_stats = preprocessing(x=x_sample, y=y_sample, max_columns=overall_params['feature_selections_cols'])
     cols_to_use = col_stats['parent_feature'][col_stats['usefull']].unique()
     cols_to_use = cols_to_use[np.isin(cols_to_use, header)]
 
@@ -32,9 +38,9 @@ def run_train_test(ds_name, metric):
     x_train_proc, _, _, _ = preprocessing(x=x_train, y=0, col_stats_init=col_stats, cat_freq_init=None)
     x_test_proc, _, _, _ = preprocessing(x=x_test, y=0, col_stats_init=col_stats, cat_freq_init=freq_stats)
 
-    print(y_train.shape[0], header.shape[0], cols_to_use.shape[0])
+    # print(y_train.shape[0], header.shape[0], cols_to_use.shape[0])
 
-    xgb_model = xgb_train_wrapper(x_train_proc, y_train, metric, 40000)
+    xgb_model = xgb_train_wrapper(x_train_proc, y_train, metric, overall_params['xgb_params_search_ss'])
     p_xgb_train = xgb_predict_wrapper(x_train_proc, xgb_model)
     p_xgb_test = xgb_predict_wrapper(x_test_proc, xgb_model)
 
@@ -54,10 +60,10 @@ def main():
         start_time = time.time()
         metric = mean_squared_error if mode == 'r' else roc_auc_score
         errors = run_train_test(data_path, metric)
-        print('train time: {:0.2f}'.format(time.time() - start_time))
 
-        print(
-            f'xgb ds={data_path} eval_metric={metric.__name__} train_err={errors[0]:.4f} test_err={errors[1]:.4f}')
+        print('train time: {:0.2f}'.format(time.time() - start_time),
+              f'xgb ds={data_path} eval_metric={metric.__name__} train_err={errors[0]:.4f} test_err={errors[1]:.4f}')
+
     print('train time: {:0.2f}'.format(time.time() - start_time0))
 
 

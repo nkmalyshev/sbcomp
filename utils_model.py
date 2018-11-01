@@ -48,7 +48,8 @@ def calc_xgb(x, y):
     params = {
         'params': {
             'silent': 1,
-            'objective': 'reg:linear'},
+            'objective': 'reg:linear',
+        },
         'num_rounds': 100}
 
     dtrain = xgb.DMatrix(x, label=y)
@@ -64,8 +65,6 @@ def calc_xgb(x, y):
 def xgb_cv(xgb_params, cv_params, dtrain):
     cv = xgb.cv(xgb_params, dtrain, num_boost_round=xgb_params['num_rounds'], nfold=cv_params['nfold'], seed=0)
     cv['diff'] = cv.iloc[:, 2] - cv.iloc[:, 0]
-    # test_error = (cv.iloc[:, 2] - min(cv.iloc[:, 2]))
-    # opt_rounds = min(test_error.index.values[test_error == 0])
 
     if cv.iloc[:, 2].nunique() == 1:
         opt_rounds = 1
@@ -92,14 +91,14 @@ def xgb_cv(xgb_params, cv_params, dtrain):
 def xgb_gs(params_out, params_search, dtrain):
 
     params_out['num_rounds'] = 300
-    cv_params = {'nfold': 2, 'threshold': .01}
-    t, tr, opt_rounds = xgb_cv(params_out, cv_params, dtrain)
+    cv_params_eta = {'nfold': 2, 'threshold': .01}
+    cv_params_search = {'nfold': 2, 'threshold': .1}
+
+    t, tr, opt_rounds = xgb_cv(params_out, cv_params_eta, dtrain)
     rounds_coeff = opt_rounds / 50
     params_out['eta'] = round(params_out['eta'] * rounds_coeff, 2)
     params_out['num_rounds'] = int(opt_rounds/rounds_coeff)+1
-
-    print(params_out['num_rounds'], params_out['eta'])
-
+    # print(params_out['num_rounds'], params_out['eta'])
     key0 = [*params_search][0]
     key1 = [*params_search][1]
     out_df = pd.DataFrame(columns=[key0, key1, 'num_rounds', 'test_error', 'train_error'])
@@ -110,8 +109,7 @@ def xgb_gs(params_out, params_search, dtrain):
             params_out[key0] = i
             params_out[key1] = j
 
-            cv_params = {'nfold': 2, 'threshold': .1}
-            test_error, train_error, opt_rounds = xgb_cv(params_out, cv_params, dtrain)
+            test_error, train_error, opt_rounds = xgb_cv(params_out, cv_params_search, dtrain)
 
             out_df.loc[iter, :] = [i, j, opt_rounds, test_error, train_error]
             iter = iter + 1

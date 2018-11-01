@@ -36,6 +36,5 @@ if __name__ == '__main__':
 
     line_id_test['prediction'] = p_xgb_test
     line_id_test[['line_id', 'prediction']].to_csv(args.prediction_csv, index=False)
-    # df[['line_id', 'prediction']].to_csv(args.prediction_csv, index=False)
 
     print('Prediction time: {:0.2f}'.format(time.time() - start_time))

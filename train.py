@@ -22,17 +22,23 @@ if __name__ == '__main__':
 
     start_time = time.time()
 
-    ###############################################################
+
+    overall_params = {
+        'prerocessin_ss': 10000,
+        'xgb_params_search_ss': 40000,
+        'feature_selections_cols': 25
+    }
     metric = mean_squared_error if args.mode == 'regression' else roc_auc_score
-    x_sample, y_sample, _, header, _ = load_data(args.train_csv, mode='train', input_rows=10000)
-    _, _, col_stats, freq_stats = preprocessing(x=x_sample, y=y_sample)
+
+    x_sample, y_sample, _, header, _ = load_data(args.train_csv, mode='train', input_rows=overall_params['prerocessin_ss'])
+    _, _, col_stats, freq_stats = preprocessing(x=x_sample, y=y_sample, max_columns=overall_params['feature_selections_cols'])
     cols_to_use = col_stats['parent_feature'][col_stats['usefull']].unique()
     cols_to_use = cols_to_use[np.isin(cols_to_use, header)]
 
     x_train, y_train, _, _, _ = load_data(args.train_csv, mode='train', input_cols=np.append(cols_to_use, ['target', 'line_id']))
     x_train_proc, _, _, _ = preprocessing(x=x_train, y=0, col_stats_init=col_stats, cat_freq_init=freq_stats)
 
-    xgb_model = xgb_train_wrapper(x_train_proc, y_train, metric, 20000)
+    xgb_model = xgb_train_wrapper(x_train_proc, y_train, metric, overall_params['xgb_params_search_ss'])
     p_xgb_train = xgb_predict_wrapper(x_train_proc, xgb_model)
 
     model_config = dict()
@@ -40,12 +46,6 @@ if __name__ == '__main__':
     model_config['cols_to_use'] = cols_to_use
     model_config['col_stats'] = col_stats
     model_config['freq_stats'] = freq_stats
-
-    # x_test, _, line_id_test, _, _ = load_data(f'{path}/test.csv', mode='test', input_cols=np.append(cols_to_use, ['line_id']))
-    # x_test_proc, _, _, _ = preprocessing(x=x_test, y=0, col_stats_init=col_stats, cat_freq_init=freq_stats)
-    # p_xgb_test = xgb_predict_wrapper(x_test_proc, xgb_model)
-
-    ###############################################################
 
     model_config_filename = os.path.join(args.model_dir, 'model_config.pkl')
     with open(model_config_filename, 'wb') as fout:
