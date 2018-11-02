@@ -27,11 +27,17 @@ def transform_datetime_features(df):
             day = f'date_day_{col_name}'
             hour = f'date_hour_{col_name}'
 
-            df[year] = (df[col_name].dt.year-2000)/20
-            df[month] = df[col_name].dt.month/12
-            df[weekday] = df[col_name].dt.weekday/7
-            df[day] = df[col_name].dt.day/31
-            df[hour] = df[col_name].dt.hour/24
+            df[year] = (df[col_name].dt.year-2000)
+            df[month] = df[col_name].dt.month
+            df[weekday] = df[col_name].dt.weekday
+            df[day] = df[col_name].dt.day
+            df[hour] = df[col_name].dt.hour
+
+            # df[year] = (df[col_name].dt.year-2000)/20
+            # df[month] = df[col_name].dt.month/12
+            # df[weekday] = df[col_name].dt.weekday/7
+            # df[day] = df[col_name].dt.day/31
+            # df[hour] = df[col_name].dt.hour/24
 
             res_date_cols += [year, month, weekday, day, hour]
         return df
@@ -111,15 +117,14 @@ def simple_feature_selector(cols, x, y, max_columns=50):
 
     df_out['usefull'] = (df_out['ols_rank'] < max_ols_columns) & (df_out['xgb_rank'] < max_xgb_columns) & (df_out['xgb_score'] > 0)
 
-    # _, df_out = calc_xgb(x[cols], y)
-    # df_out['xgb_rank'] = df_out.sort_values('xgb_score').reset_index().index
-    # df_out['usefull'] = (df_out['xgb_rank'] < max_xgb_columns) & (df_out['xgb_score'] > 0)
-
     return df_out
 
 
 def collect_col_stats(df):
     col_stats = df.describe(include='all').T
+    col_stats = col_stats.drop(['25%', '75%'], axis=1)
+    col_stats.rename(index=str, columns={"50%": "median"}, inplace=True)
+
     col_stats['nunique'] = df.nunique()
     col_stats['is_numeric'] = pd.isna([col_stats['mean']])[0]==False
 
@@ -170,29 +175,15 @@ def preprocessing(x, y, col_stats_init=None, cat_freq_init=None, sample_size=Non
     x_na = x_number.copy()
     x_na = x_na.isnull().astype(int)
     x_na.columns = 'na_' + x_na.columns
-    #
+
     # x_agg = pd.concat([x_number, x_date, x_cat, x_na], axis=1)
-
-    ####  norm
-    # x_nn = x_number.copy()
-    # for col in x_nn.columns.values:
-    #     x_na.loc[:, col] = 1
-    #     x = x.fillna(x[col].mean())
-
-    # col_norm = col_stats_out.loc[cols_to_use]
-    # col_norm = col_norm[['mean', 'std', 'nunique', '50%', 'max', 'min']]
-    # col_norm.columns = ['mean', 'std', 'nunique', 'median', 'max', 'min']
-    # col_norm['abs_max'] = max(col_norm['min'])
-    # col_norm = col_norm.sort_values('nunique')
-    # col_norm = col_norm.loc[col_norm['nunique'] > 2]
-    # x_out.loc[:, col_norm.index.values] = (x_out.loc[:, col_norm.index.values] - col_norm['mean'])/(col_norm['std']*3)
 
     x_agg = pd.concat([x_number, x_date, x_cat], axis=1)
 
     # features selection
     if col_stats_init is None:
         col_stats = collect_col_stats(x_agg)
-        cols = col_stats.index.values[col_stats.is_numeric & (col_stats['nunique'] > 1)]
+        cols = col_stats.index.values[col_stats.is_numeric & (col_stats['nunique'] > 2)]
         fs_results = simple_feature_selector(cols, x_agg, y, max_columns=max_columns)
         col_stats.update(fs_results)
         col_stats['usefull'] = col_stats['usefull'].astype('bool')
@@ -203,10 +194,21 @@ def preprocessing(x, y, col_stats_init=None, cat_freq_init=None, sample_size=Non
     cols_to_use = col_stats_out.index.values[col_stats_out.usefull]
     x_out = x_agg[cols_to_use].copy()
 
-
     x_out = x_out.fillna(-1)
-
     x_out.loc[:, 'na_nulls'] = x_na.sum(axis=1)/x_na.shape[1]
 
-
     return x_out, y, col_stats_out, cat_freq_out
+
+    # col_norm = col_stats_out.loc[cols_to_use]
+    # col_norm = col_norm.loc[col_norm['nunique'] > 2]
+    # col_norm['diff'] = col_norm['max'] - col_norm['min']
+    # col_norm = col_norm.loc[col_norm['diff']>1]
+    #
+    # x_norm = x_out.copy()
+    # x_norm.loc[:, col_norm.index.values] = (x_norm.loc[:, col_norm.index.values] - col_norm['min']) / col_norm['diff']
+    # x_norm = x_norm.astype(float)
+    #
+    # x_norm = x_norm.fillna(-1)
+    # x_norm.loc[:, 'na_nulls'] = x_na.sum(axis=1)/x_na.shape[1]
+    #
+    # return x_norm, y, col_stats_out, cat_freq_out

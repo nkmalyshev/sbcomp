@@ -80,9 +80,6 @@ def xgb_cv(xgb_params, cv_params, dtrain):
             cv_best = cv_best.sort_values('diff')
             opt_rounds = cv_best.index.values[0]
 
-
-
-
     test_error = cv.iloc[:, 2][opt_rounds]
     train_error = cv.iloc[:, 0][opt_rounds]
     return test_error, train_error, opt_rounds
@@ -94,11 +91,13 @@ def xgb_gs(params_out, params_search, dtrain):
     cv_params_eta = {'nfold': 3, 'threshold': .01}
     cv_params_search = {'nfold': 3, 'threshold': .1}
 
-    t, tr, opt_rounds = xgb_cv(params_out, cv_params_eta, dtrain)
+    _, _, opt_rounds = xgb_cv(params_out, cv_params_eta, dtrain)
     rounds_coeff = opt_rounds / 50
-    params_out['eta'] = round(params_out['eta'] * rounds_coeff, 2)
+    params_out['eta'] = round(params_out['eta'] * rounds_coeff, 5)
     params_out['num_rounds'] = int(opt_rounds/rounds_coeff)+1
+
     # print(params_out['num_rounds'], params_out['eta'])
+
     key0 = [*params_search][0]
     key1 = [*params_search][1]
     out_df = pd.DataFrame(columns=[key0, key1, 'num_rounds', 'test_error', 'train_error'])
@@ -130,16 +129,22 @@ def xgb_gs(params_out, params_search, dtrain):
     return params_out
 
 
-def xgb_train_wrapper(x, y, metric, sample_size=None, small_sample_rows=10000):
+def xgb_train_wrapper(x, y, metric, search_sample_size=None, train_sample_size=None, small_sample_rows=10000):
 
     dtrain = xgb.DMatrix(x, label=y)
     dsample = dtrain
 
-    if (sample_size is not None):
-        if (sample_size < x.shape[0]):
+    if (search_sample_size is not None):
+        if (search_sample_size < x.shape[0]):
             ids = x.index.values
-            sample_ids = ids[np.random.randint(0, ids.shape[0], sample_size)]
+            sample_ids = ids[np.random.randint(0, ids.shape[0], search_sample_size)]
             dsample = xgb.DMatrix(x.loc[sample_ids], label=y.loc[sample_ids])
+
+    if (train_sample_size is not None):
+        if (train_sample_size < x.shape[0]):
+            ids = x.index.values
+            sample_ids = ids[np.random.randint(0, ids.shape[0], train_sample_size)]
+            dtrain = xgb.DMatrix(x.loc[sample_ids], label=y.loc[sample_ids])
 
     init_params = {
         'silent': 1,

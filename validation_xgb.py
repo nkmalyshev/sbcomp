@@ -7,12 +7,12 @@ from sklearn.metrics import mean_squared_error, roc_auc_score
 _DATA_PATH = 'data/'
 
 data_sets = [
-    'check_1_r',
-    'check_2_r',
-    'check_3_r',
-    'check_4_c',
-    'check_5_c',
-    'check_6_c',
+    # 'check_1_r',
+    # 'check_2_r',
+    # 'check_3_r',
+    # 'check_4_c',
+    # 'check_5_c',
+    # 'check_6_c',
     'check_7_c',
     'check_8_c',
 ]
@@ -23,8 +23,9 @@ def run_train_test(ds_name, metric):
     overall_params = {
         'preprocessing_ss': 10000,
         'xgb_params_search_ss': 40000,
+        'xgb_train_ss': None,
         'small_data_rows': 20000,
-        'feature_selections_cols': 75
+        'feature_selections_cols': 25
     }
 
     x_sample, y_sample, _, header, _ = load_data(f'{path}/train.csv', mode='train', input_rows=overall_params['preprocessing_ss'])
@@ -39,7 +40,7 @@ def run_train_test(ds_name, metric):
     x_train_proc, _, _, freq_stats = preprocessing(x=x_train, y=0, col_stats_init=col_stats, cat_freq_init=None)
     x_test_proc, _, _, _ = preprocessing(x=x_test, y=0, col_stats_init=col_stats, cat_freq_init=freq_stats)
 
-    xgb_model = xgb_train_wrapper(x_train_proc, y_train, metric, overall_params['xgb_params_search_ss'], overall_params['small_data_rows'])
+    xgb_model = xgb_train_wrapper(x_train_proc, y_train, metric, overall_params['xgb_params_search_ss'], overall_params['xgb_train_ss'], overall_params['small_data_rows'])
     p_xgb_train = xgb_predict_wrapper(x_train_proc, xgb_model)
     p_xgb_test = xgb_predict_wrapper(x_test_proc, xgb_model)
 
