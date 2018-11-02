@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from utils_mk2 import load_data, preprocessing
 from utils_model import xgb_predict_wrapper
+from utils_model_lgb import lgb_train_wrapper, lgb_predict_wrapper
 
 
 # use this to stop the algorithm before time limit exceeds
@@ -25,16 +26,18 @@ if __name__ == '__main__':
     with open(model_config_filename, 'rb') as fin:
         model_config = pickle.load(fin)
 
-    xgb_model = model_config['model']
+    model = model_config['model']
     cols_to_use = model_config['cols_to_use']
     col_stats = model_config['col_stats']
     freq_stats = model_config['freq_stats']
+    mode = model_config['mode']
 
     x_test, _, line_id_test, _, _ = load_data(args.test_csv, mode='test', input_cols=np.append(cols_to_use, ['line_id']))
     x_test_proc, _, _, _ = preprocessing(x=x_test, y=0, col_stats_init=col_stats, cat_freq_init=freq_stats)
-    p_xgb_test = xgb_predict_wrapper(x_test_proc, xgb_model)
+    p_test = lgb_predict_wrapper(x_test_proc, model, mode)
+    # p_test = xgb_predict_wrapper(x_test_proc, model)
 
-    line_id_test['prediction'] = p_xgb_test
+    line_id_test['prediction'] = p_test
     line_id_test[['line_id', 'prediction']].to_csv(args.prediction_csv, index=False)
 
     print('Prediction time: {:0.2f}'.format(time.time() - start_time))

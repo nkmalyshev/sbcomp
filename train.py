@@ -6,7 +6,7 @@ import numpy as np
 from utils_mk2 import load_data, preprocessing
 from utils_model import xgb_train_wrapper, xgb_predict_wrapper
 from sklearn.metrics import mean_squared_error, roc_auc_score
-
+from utils_model_lgb import lgb_train_wrapper, lgb_predict_wrapper
 
 # use this to stop the algorithm before time limit exceeds
 TIME_LIMIT = int(os.environ.get('TIME_LIMIT', 5 * 60))
@@ -26,10 +26,18 @@ if __name__ == '__main__':
         'preprocessing_ss': 10000,
         'xgb_params_search_ss': 40000,
         'small_data_rows': 20000,
-        'feature_selections_cols': 25
+        'feature_selections_cols': 50
+    }
+
+    hyperopt_params = {
+        'HYPEROPT_NUM_ITERATIONS': 50,
+        'TIME_LIMIT': 150,
+        'HYPEROPT_MAX_TRAIN_SIZE': 10 * 1024 * 1024,
+        'HYPEROPT_MAX_TRAIN_ROWS': 15000,
     }
 
     metric = mean_squared_error if args.mode == 'regression' else roc_auc_score
+    mode = args.mode
 
     x_sample, y_sample, _, header, _ = load_data(args.train_csv, mode='train', input_rows=overall_params['preprocessing_ss'])
     _, _, col_stats, _ = preprocessing(x=x_sample, y=y_sample, max_columns=overall_params['feature_selections_cols'])
@@ -39,14 +47,17 @@ if __name__ == '__main__':
     x_train, y_train, _, _, _ = load_data(args.train_csv, mode='train', input_cols=np.append(cols_to_use, ['target', 'line_id']))
     x_train_proc, _, _, freq_stats = preprocessing(x=x_train, y=0, col_stats_init=col_stats, cat_freq_init=None)
 
-    xgb_model = xgb_train_wrapper(x_train_proc, y_train, metric, overall_params['xgb_params_search_ss'], overall_params['small_data_rows'])
-    p_xgb_train = xgb_predict_wrapper(x_train_proc, xgb_model)
+    elapsed = time.time()-start_time
+    hyperopt_params['TIME_LIMIT'] = int((TIME_LIMIT-elapsed)*0.7)
+    model = lgb_train_wrapper(x_train_proc, y_train, mode, hyperopt_params)
+    # model = xgb_train_wrapper(x_train_proc, y_train, metric, overall_params['xgb_params_search_ss'], overall_params['small_data_rows'])
 
     model_config = dict()
-    model_config['model'] = xgb_model
+    model_config['model'] = model
     model_config['cols_to_use'] = cols_to_use
     model_config['col_stats'] = col_stats
     model_config['freq_stats'] = freq_stats
+    model_config['mode'] = mode
 
     model_config_filename = os.path.join(args.model_dir, 'model_config.pkl')
     with open(model_config_filename, 'wb') as fout:
