@@ -27,11 +27,11 @@ def transform_datetime_features(df):
             day = f'date_day_{col_name}'
             hour = f'date_hour_{col_name}'
 
-            df[year] = df[col_name].dt.year
-            df[month] = df[col_name].dt.month
-            df[weekday] = df[col_name].dt.weekday
-            df[day] = df[col_name].dt.day
-            df[hour] = df[col_name].dt.hour
+            df[year] = (df[col_name].dt.year-2000)/20
+            df[month] = df[col_name].dt.month/12
+            df[weekday] = df[col_name].dt.weekday/7
+            df[day] = df[col_name].dt.day/31
+            df[hour] = df[col_name].dt.hour/24
 
             res_date_cols += [year, month, weekday, day, hour]
         return df
@@ -144,8 +144,6 @@ def collect_col_stats(df):
 
 def preprocessing(x, y, col_stats_init=None, cat_freq_init=None, sample_size=None, max_columns=None):
 
-    x.loc[:, 'number_nulls'] = x.isnull().sum(axis=1)
-
     if (sample_size is not None):
         if (sample_size < x.shape[0]):
             ids = x.index.values
@@ -167,6 +165,28 @@ def preprocessing(x, y, col_stats_init=None, cat_freq_init=None, sample_size=Non
     x_date = transform_datetime_features(x[cols_date].copy())
     x_number = x[cols_number]
     x_cat, cat_freq_out = transform_categorigical_features(x[cols_category].copy(), cat_freq_init)
+
+
+    x_na = x_number.copy()
+    x_na = x_na.isnull().astype(int)
+    x_na.columns = 'na_' + x_na.columns
+    #
+    # x_agg = pd.concat([x_number, x_date, x_cat, x_na], axis=1)
+
+    ####  norm
+    # x_nn = x_number.copy()
+    # for col in x_nn.columns.values:
+    #     x_na.loc[:, col] = 1
+    #     x = x.fillna(x[col].mean())
+
+    # col_norm = col_stats_out.loc[cols_to_use]
+    # col_norm = col_norm[['mean', 'std', 'nunique', '50%', 'max', 'min']]
+    # col_norm.columns = ['mean', 'std', 'nunique', 'median', 'max', 'min']
+    # col_norm['abs_max'] = max(col_norm['min'])
+    # col_norm = col_norm.sort_values('nunique')
+    # col_norm = col_norm.loc[col_norm['nunique'] > 2]
+    # x_out.loc[:, col_norm.index.values] = (x_out.loc[:, col_norm.index.values] - col_norm['mean'])/(col_norm['std']*3)
+
     x_agg = pd.concat([x_number, x_date, x_cat], axis=1)
 
     # features selection
@@ -184,16 +204,9 @@ def preprocessing(x, y, col_stats_init=None, cat_freq_init=None, sample_size=Non
     x_out = x_agg[cols_to_use].copy()
 
 
-    col_norm = col_stats_out.loc[cols_to_use]
-    col_norm = col_norm[['mean', 'std', 'nunique', '50%', 'max', 'min']]
-    col_norm.columns = ['mean', 'std', 'nunique', 'median', 'max', 'min']
-    col_norm = col_norm.sort_values('nunique')
-    col_norm = col_norm.loc[col_norm['nunique'] > 2]
-    x_out.loc[:, col_norm.index.values] = (x_out.loc[:, col_norm.index.values] - col_norm['mean'])/(col_norm['std']*3)
-
-    # fillna
     x_out = x_out.fillna(-1)
-    # norm
+
+    x_out.loc[:, 'na_nulls'] = x_na.sum(axis=1)/x_na.shape[1]
 
 
     return x_out, y, col_stats_out, cat_freq_out

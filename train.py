@@ -22,23 +22,24 @@ if __name__ == '__main__':
 
     start_time = time.time()
 
-
     overall_params = {
-        'prerocessin_ss': 10000,
+        'preprocessing_ss': 10000,
         'xgb_params_search_ss': 40000,
+        'small_data_rows': 20000,
         'feature_selections_cols': 25
     }
+
     metric = mean_squared_error if args.mode == 'regression' else roc_auc_score
 
-    x_sample, y_sample, _, header, _ = load_data(args.train_csv, mode='train', input_rows=overall_params['prerocessin_ss'])
-    _, _, col_stats, freq_stats = preprocessing(x=x_sample, y=y_sample, max_columns=overall_params['feature_selections_cols'])
+    x_sample, y_sample, _, header, _ = load_data(args.train_csv, mode='train', input_rows=overall_params['preprocessing_ss'])
+    _, _, col_stats, _ = preprocessing(x=x_sample, y=y_sample, max_columns=overall_params['feature_selections_cols'])
     cols_to_use = col_stats['parent_feature'][col_stats['usefull']].unique()
     cols_to_use = cols_to_use[np.isin(cols_to_use, header)]
 
     x_train, y_train, _, _, _ = load_data(args.train_csv, mode='train', input_cols=np.append(cols_to_use, ['target', 'line_id']))
-    x_train_proc, _, _, _ = preprocessing(x=x_train, y=0, col_stats_init=col_stats, cat_freq_init=freq_stats)
+    x_train_proc, _, _, freq_stats = preprocessing(x=x_train, y=0, col_stats_init=col_stats, cat_freq_init=None)
 
-    xgb_model = xgb_train_wrapper(x_train_proc, y_train, metric, overall_params['xgb_params_search_ss'])
+    xgb_model = xgb_train_wrapper(x_train_proc, y_train, metric, overall_params['xgb_params_search_ss'], overall_params['small_data_rows'])
     p_xgb_train = xgb_predict_wrapper(x_train_proc, xgb_model)
 
     model_config = dict()
