@@ -3,7 +3,7 @@ import numpy as np
 import xgboost as xgb
 
 
-def simple_feature_selector(cols, x, y, max_columns=50):
+def simple_feature_selector(cols, x, y, metric, max_columns=50):
     df_out = pd.DataFrame(
         {'col_names': cols, 'ols_error': -1})
     df_out.set_index('col_names', inplace=True)
@@ -19,7 +19,7 @@ def simple_feature_selector(cols, x, y, max_columns=50):
 
     ##############################################################
     xgb_cols = df_out.index.values[df_out['ols_rank'] < max_columns]
-    _, xgb_score = calc_xgb(x[xgb_cols], y)
+    _, xgb_score = calc_xgb(x[xgb_cols], y, metric)
 
     df_out = pd.concat([df_out, xgb_score], axis=1, sort=True)
     df_out = df_out.fillna(0)
@@ -44,16 +44,16 @@ def calc_ols(x, y, reg_l2):
     return p
 
 
-def calc_xgb(x, y):
+def calc_xgb(x, y, metric):
     params = {
-        'params': {
-            'silent': 1,
-            'objective': 'reg:linear',
-        },
-        'num_rounds': 100}
-
+        'silent': 1,
+        'objective': 'binary:logistic' if metric.__name__ == 'roc_auc_score' else 'reg:linear',
+        'scale_pos_weight': (y.shape[0]-sum(y))/sum(y) if metric.__name__ == 'roc_auc_score' else 1,
+        'eta': .03,
+        'num_rounds': 200
+    }
     dtrain = xgb.DMatrix(x, label=y)
-    xgb_model = xgb.train(params['params'], dtrain, params['num_rounds'])
+    xgb_model = xgb.train(params, dtrain, params['num_rounds'])
     f_score = pd.DataFrame.from_dict(data=xgb_model.get_score(importance_type='gain'), orient='index', columns=['xgb_score'])
     f_score.sort_values('xgb_score').reset_index(drop=True)
     f_score = f_score.sort_values('xgb_score', ascending=False)

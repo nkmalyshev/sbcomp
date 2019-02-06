@@ -124,7 +124,7 @@ def hyperopt_lgb(X, y, mode, N, time_limit, max_train_size=None, max_train_rows=
         iteration_start = time.time()
 
         # print(params)
-        params.update({'n_estimators': 500, 'random_state': 42, 'n_jobs': -1})
+        params.update({'n_estimators': 500, 'random_state': 0, 'n_jobs': -1})
 
         model = lgb_model(params, mode)
         model.fit(Xtrain, ytrain)

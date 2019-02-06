@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from utils_model import calc_xgb, calc_ols
+from utils_model import simple_feature_selector
 
 ONEHOT_MAX_UNIQUE_VALUES = 20
 BIG_DATASET_SIZE = 500 * 1024 * 1024
@@ -27,7 +27,7 @@ def transform_datetime_features(df):
             day = f'date_day_{col_name}'
             hour = f'date_hour_{col_name}'
 
-            df[year] = (df[col_name].dt.year-2000)
+            df[year] = df[col_name].dt.year
             df[month] = df[col_name].dt.month
             df[weekday] = df[col_name].dt.weekday
             df[day] = df[col_name].dt.day
@@ -86,40 +86,6 @@ def load_data(path, mode='train', input_rows=None, input_cols=None):
     return df, y, line_id, header, is_big
 
 
-def simple_feature_selector(cols, x, y, max_columns=50):
-
-    max_ols_columns = max_columns*2
-    max_xgb_columns = max_columns
-
-    df_out = pd.DataFrame(
-        {'col_names': cols, 'ols_error': -1})
-    df_out.set_index('col_names', inplace=True)
-
-    for col in df_out.index.values:
-        xi = pd.DataFrame({'feature': x[col]})
-        p_ols = calc_ols(xi, y, .3)
-        ols_error = np.sqrt(np.dot(p_ols - y, p_ols - y) / y.shape[0])
-        df_out.loc[col, 'ols_error'] = ols_error
-
-    df_out = df_out.sort_values('ols_error')
-    df_out['ols_rank'] = df_out.sort_values('ols_error').reset_index().index
-
-    ##############################################################
-    xgb_cols = df_out.index.values[df_out['ols_rank'] < max_ols_columns]
-    _, xgb_score = calc_xgb(x[xgb_cols], y)
-
-    df_out = pd.concat([df_out, xgb_score], axis=1, sort=True)
-    df_out = df_out.fillna(0)
-
-    df_out = df_out.sort_values(by=['xgb_score'], ascending=False)
-    df_out['xgb_rank'] = df_out.sort_values('xgb_score').reset_index().index
-    ##############################################################
-
-    df_out['usefull'] = (df_out['ols_rank'] < max_ols_columns) & (df_out['xgb_rank'] < max_xgb_columns) & (df_out['xgb_score'] > 0)
-
-    return df_out
-
-
 def collect_col_stats(df):
     col_stats = df.describe(include='all').T
     col_stats = col_stats.drop(['25%', '75%'], axis=1)
@@ -147,7 +113,7 @@ def collect_col_stats(df):
     return col_stats
 
 
-def preprocessing(x, y, col_stats_init=None, cat_freq_init=None, sample_size=None, max_columns=None):
+def preprocessing(x, y, col_stats_init=None, cat_freq_init=None, sample_size=None, max_columns=None, metric=None):
 
     if (sample_size is not None):
         if (sample_size < x.shape[0]):
@@ -171,20 +137,18 @@ def preprocessing(x, y, col_stats_init=None, cat_freq_init=None, sample_size=Non
     x_number = x[cols_number]
     x_cat, cat_freq_out = transform_categorigical_features(x[cols_category].copy(), cat_freq_init)
 
-
     x_na = x_number.copy()
     x_na = x_na.isnull().astype(int)
     x_na.columns = 'na_' + x_na.columns
 
-    # x_agg = pd.concat([x_number, x_date, x_cat, x_na], axis=1)
-
-    x_agg = pd.concat([x_number, x_date, x_cat], axis=1)
+    x_agg = pd.concat([x_number, x_date, x_cat, x_na], axis=1)
+    # x_agg = pd.concat([x_number, x_date, x_cat], axis=1)
 
     # features selection
     if col_stats_init is None:
         col_stats = collect_col_stats(x_agg)
         cols = col_stats.index.values[col_stats.is_numeric & (col_stats['nunique'] > 2)]
-        fs_results = simple_feature_selector(cols, x_agg, y, max_columns=max_columns)
+        fs_results = simple_feature_selector(cols, x_agg, y, metric, max_columns=max_columns)
         col_stats.update(fs_results)
         col_stats['usefull'] = col_stats['usefull'].astype('bool')
         col_stats_out = col_stats
@@ -196,7 +160,6 @@ def preprocessing(x, y, col_stats_init=None, cat_freq_init=None, sample_size=Non
 
     x_out = x_out.fillna(-1)
     x_out.loc[:, 'na_nulls'] = x_na.sum(axis=1)/x_na.shape[1]
-
     return x_out, y, col_stats_out, cat_freq_out
 
     # col_norm = col_stats_out.loc[cols_to_use]

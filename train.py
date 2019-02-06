@@ -23,17 +23,17 @@ if __name__ == '__main__':
     start_time = time.time()
 
     overall_params = {
-        'preprocessing_ss': 10000,
+        'preprocessing_ss': 20000,
         'xgb_params_search_ss': 40000,
         'small_data_rows': 20000,
-        'feature_selections_cols': 50
+        'feature_selections_cols': 75
     }
 
     hyperopt_params = {
         'HYPEROPT_NUM_ITERATIONS': 50,
         'TIME_LIMIT': 150,
         'HYPEROPT_MAX_TRAIN_SIZE': 10 * 1024 * 1024,
-        'HYPEROPT_MAX_TRAIN_ROWS': 15000,
+        'HYPEROPT_MAX_TRAIN_ROWS': 40000,
     }
 
     metric = mean_squared_error if args.mode == 'regression' else roc_auc_score

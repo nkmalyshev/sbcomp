@@ -7,14 +7,14 @@ from sklearn.metrics import mean_squared_error, roc_auc_score
 _DATA_PATH = 'data/'
 
 data_sets = [
-    # 'check_1_r',
-    # 'check_2_r',
-    # 'check_3_r',
-    # 'check_4_c',
+    'check_1_r',
+    'check_2_r',
+    'check_3_r',
+    'check_4_c',
     # 'check_5_c',
     # 'check_6_c',
-    'check_7_c',
-    'check_8_c',
+    # 'check_7_c',
+    # 'check_8_c',
 ]
 
 def run_train_test(ds_name, metric):
@@ -29,7 +29,7 @@ def run_train_test(ds_name, metric):
     }
 
     x_sample, y_sample, _, header, _ = load_data(f'{path}/train.csv', mode='train', input_rows=overall_params['preprocessing_ss'])
-    _, _, col_stats, freq_stats = preprocessing(x=x_sample, y=y_sample, max_columns=overall_params['feature_selections_cols'])
+    _, _, col_stats, freq_stats = preprocessing(x=x_sample, y=y_sample, max_columns=overall_params['feature_selections_cols'], metric=metric)
     cols_to_use = col_stats['parent_feature'][col_stats['usefull']].unique()
     cols_to_use = cols_to_use[np.isin(cols_to_use, header)]
 
